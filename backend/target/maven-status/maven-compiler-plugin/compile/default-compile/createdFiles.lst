@@ -55,6 +55,7 @@ com/zmen/backend/dto/VoucherStatisticsResponse$TopVoucherStats.class
 com/zmen/backend/dto/UpdateProductRequest$UpdateProductVariantRequest.class
 com/zmen/backend/dto/ProductPriceHistoryResponse.class
 com/zmen/backend/service/UserService.class
+com/zmen/backend/controller/BlogController.class
 com/zmen/backend/entity/ActivityLog.class
 com/zmen/backend/entity/SupportTicket$Priority.class
 com/zmen/backend/dto/BrandResponse.class
@@ -72,6 +73,7 @@ com/zmen/backend/dto/ValidateVoucherRequest.class
 com/zmen/backend/dto/UpdateUserProfileRequest.class
 com/zmen/backend/repository/OrderItemRepository.class
 com/zmen/backend/entity/OrderItem.class
+com/zmen/backend/controller/AuthController.class
 com/zmen/backend/dto/CartRequest.class
 com/zmen/backend/dto/OrderRequest.class
 com/zmen/backend/controller/ReportController.class
@@ -121,6 +123,7 @@ com/zmen/backend/dto/ShippingCostResponse.class
 com/zmen/backend/service/EmailService.class
 com/zmen/backend/entity/Voucher.class
 com/zmen/backend/repository/CartItemRepository.class
+com/zmen/backend/controller/BrandController.class
 com/zmen/backend/dto/UpdateCategoryRequest.class
 com/zmen/backend/dto/JwtResponse$UserInfo.class
 com/zmen/backend/entity/ProductVariant.class
@@ -140,6 +143,7 @@ com/zmen/backend/dto/ProductReviewSummaryResponse.class
 com/zmen/backend/entity/AttributeValue$ValueStatus.class
 com/zmen/backend/repository/WishlistRepository.class
 com/zmen/backend/entity/EmailHistory.class
+com/zmen/backend/controller/AdminController.class
 com/zmen/backend/dto/ProcessPaymentRequest.class
 com/zmen/backend/entity/UserProfile.class
 com/zmen/backend/repository/OrderRepository.class
@@ -175,6 +179,7 @@ com/zmen/backend/dto/RefreshTokenRequest.class
 com/zmen/backend/config/SwaggerConfig.class
 com/zmen/backend/repository/PaymentTransactionRepository.class
 com/zmen/backend/controller/OrderController.class
+com/zmen/backend/controller/ReviewController.class
 com/zmen/backend/dto/AddressValidationResponse.class
 com/zmen/backend/controller/WishlistController.class
 com/zmen/backend/dto/UpdateReviewRequest.class
@@ -193,8 +198,10 @@ com/zmen/backend/entity/TicketReply.class
 com/zmen/backend/dto/LoginRequest.class
 com/zmen/backend/dto/CartItemResponse.class
 com/zmen/backend/entity/BlogComment$CommentStatus.class
+com/zmen/backend/controller/LoyaltyController.class
 com/zmen/backend/entity/PaymentTransaction.class
 com/zmen/backend/entity/BlogPost$PostStatus.class
+com/zmen/backend/controller/StaffController.class
 com/zmen/backend/dto/ResendVerificationRequest.class
 com/zmen/backend/entity/Store$StoreStatus.class
 com/zmen/backend/repository/ProductReviewRepository.class
@@ -211,6 +218,7 @@ com/zmen/backend/entity/Order$OrderStatus.class
 com/zmen/backend/dto/ReportReviewRequest.class
 com/zmen/backend/entity/SupportTicket$TicketStatus.class
 com/zmen/backend/dto/ChangePasswordRequest.class
+com/zmen/backend/controller/CategoryController.class
 com/zmen/backend/dto/ProvinceResponse.class
 com/zmen/backend/dto/VoucherUsageResponse$VoucherUsageDetail.class
 com/zmen/backend/dto/RefundRequest.class
