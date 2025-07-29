@@ -1,0 +1,1166 @@
+// https://dbdocs.io/duongcoilc2004/Cua-hang
+
+// ======================================================
+// == DATABASE CHO HỆ THỐNG BÁN LẺ (ONLINE + OFFLINE)
+// ======================================================
+// Ngôn ngữ: Tiếng Việt
+// Quy tắc đặt tên: snake_case
+// Version: 2.2.1
+// ======================================================
+
+Project "CuaHangBanLe_Enterprise_Plus_Annotated" {
+  database_type: 'PostgreSQL'
+  Note: '''
+  ### Sơ đồ DB hoàn chỉnh cho hệ thống bán lẻ chuyên nghiệp.
+
+  **CÁC TÍNH NĂNG MỞ RỘNG (VERSION 2.2.1):**
+  - **Hệ thống Khuyến mãi Nâng cao**: Hỗ trợ khuyến mãi tự động (Mua X tặng Y, giảm giá theo ngưỡng) và theo nhóm khách hàng.
+  - **Hệ thống Khách hàng thân thiết**: Quản lý Hạng thành viên và Lịch sử điểm chi tiết.
+  - **Quản lý Đặt hàng trước (Pre-order)**: Hỗ trợ bán sản phẩm sắp về.
+  - **Hệ thống Thanh toán & Hoàn tiền chi tiết**: Ghi log giao dịch với cổng thanh toán và quản lý hoàn tiền.
+  - **Thuộc tính sản phẩm động**: Quản lý thuộc tính (size, màu) một cách linh hoạt.
+  - **Nền tảng Báo cáo**: Bảng tổng hợp dữ liệu cho báo cáo nhanh.
+  - **Hỗ trợ B2B**: Quản lý thông tin khách hàng doanh nghiệp.
+  - **Hệ thống Hỗ trợ khách hàng (Ticketing)**: Quản lý khiếu nại và yêu cầu hỗ trợ.
+  '''
+}
+
+// =============================================
+// == NHÓM 1: NGƯỜI DÙNG & NHÂN VIÊN (RBAC)
+// =============================================
+
+Table NguoiDung {
+  Note: '''
+  ### Bảng Người Dùng
+  - **Mục đích**: Lưu trữ thông tin xác thực cốt lõi của khách hàng.
+  - **Thiết kế**: Tách biệt thông tin đăng nhập (`NguoiDung`) và thông tin cá nhân (`ThongTinNguoiDung`) để bảo mật và tối ưu hiệu suất.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ object `NguoiDung` và `ThongTinNguoiDung` liên quan.
+  - **Thời gian**: Cache trong suốt phiên đăng nhập của người dùng (session-based).
+  - **Invalidate**: Khi người dùng cập nhật thông tin cá nhân, đổi mật khẩu hoặc đăng xuất.
+  '''
+  id int [pk, increment, note: 'ID định danh duy nhất cho người dùng']
+  email varchar(255) [unique, not null, note: 'Email dùng để đăng nhập, không trùng lặp']
+  mat_khau varchar(255) [not null, note: 'Mật khẩu đã được mã hóa (hashed) bằng thuật toán an toàn như Argon2 hoặc bcrypt']
+  ngay_tao timestamp [default: `now()`, not null, note: 'Thời điểm tài khoản được tạo']
+  ngay_cap_nhat timestamp [default: `now()`, not null, note: 'Thời điểm thông tin tài khoản được cập nhật lần cuối']
+  ngay_xoa timestamp [note: 'Soft-delete: Đánh dấu thời điểm xóa. NULL nếu chưa bị xóa. Giúp bảo toàn dữ liệu liên quan (hóa đơn...).']
+}
+
+Table ThongTinNguoiDung {
+  Note: '''
+  ### Bảng Thông Tin Người Dùng
+  - **Mục đích**: Lưu trữ thông tin hồ sơ chi tiết của khách hàng.
+  - **Thiết kế**: Quan hệ 1-1 với `NguoiDung`.
+
+  **Chiến lược Cache:**
+  - **Chiến lược**: Đi kèm với cache của `NguoiDung`.
+  '''
+  id int [pk, increment]
+  id_nguoi_dung int [unique, not null, note: 'Khóa ngoại, quan hệ 1-1 với bảng NguoiDung']
+  ho_ten varchar(255) [not null, note: 'Họ và tên đầy đủ của người dùng']
+  avatar varchar(255) [note: 'URL đến ảnh đại diện']
+  so_dien_thoai varchar(20) [unique, note: 'Số điện thoại liên lạc, có thể là duy nhất']
+  gioi_tinh LoaiGioiTinh [note: 'Giới tính của người dùng']
+  ngay_sinh date [note: 'Ngày sinh của người dùng, dùng để gửi ưu đãi sinh nhật']
+  diem_tich_luy int [default: 0, not null, note: 'Tổng điểm hiện có của khách hàng. Được cập nhật bởi các giao dịch trong `LichSuDiemTichLuy`']
+  id_hang_thanh_vien int [note: 'Cấp độ thành viên hiện tại của khách hàng. Được cập nhật bởi một job định kỳ hoặc trigger.']
+  id_cong_ty int [note: 'Nếu người dùng này là đại diện cho một công ty (B2B)']
+}
+
+Enum LoaiGioiTinh {
+  nam
+  nu
+  khac
+}
+
+Table DiaChiNguoiDung {
+  Note: '''
+  ### Bảng Địa Chỉ Người Dùng
+  - **Mục đích**: Cho phép người dùng lưu nhiều địa chỉ giao hàng.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Danh sách địa chỉ theo `id_nguoi_dung`.
+  - **Thời gian**: Cache trong phiên (session) hoặc cache ngắn hạn (15-30 phút).
+  - **Invalidate**: Khi người dùng thêm/sửa/xóa địa chỉ.
+  '''
+  id int [pk, increment]
+  id_nguoi_dung int [not null, note: 'Khóa ngoại, cho biết địa chỉ này của người dùng nào']
+  tinh_thanh varchar(100) [not null, note: 'Tỉnh/Thành phố']
+  quan_huyen varchar(100) [not null, note: 'Quận/Huyện']
+  phuong_xa varchar(100) [not null, note: 'Phường/Xã']
+  chi_tiet varchar(255) [not null, note: 'Địa chỉ chi tiết: số nhà, tên đường...']
+  la_mac_dinh boolean [default: false, not null, note: 'True nếu đây là địa chỉ giao hàng mặc định']
+}
+
+Table NhanVien {
+  Note: '''
+  ### Bảng Nhân Viên
+  - **Mục đích**: Quản lý tài khoản và thông tin của nhân viên.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Thông tin nhân viên (trừ mật khẩu).
+  - **Thời gian**: Dữ liệu ít thay đổi, có thể cache dài hạn (vài giờ).
+  - **Invalidate**: Khi có cập nhật thông tin nhân viên trong trang admin.
+  '''
+  id int [pk, increment]
+  ho_ten varchar(255) [not null, note: 'Họ và tên nhân viên']
+  email varchar(255) [unique, not null, note: 'Email đăng nhập của nhân viên']
+  mat_khau varchar(255) [not null, note: 'Mật khẩu đã được mã hóa (hashed)']
+  so_dien_thoai varchar(20)
+  avatar varchar(255)
+  id_cua_hang int [note: 'Nhân viên này đang làm việc tại cửa hàng nào. Null nếu là quản lý cấp cao.']
+  trang_thai LoaiTrangThaiNhanVien [not null, default: 'dang_hoat_dong', note: 'Quản lý trạng thái hoạt động của nhân viên']
+  la_super_admin boolean [not null, default: false, note: 'Cờ đặc biệt cho Super Admin, có toàn quyền hệ thống, bỏ qua mọi kiểm tra quyền khác.']
+  ngay_tao timestamp [default: `now()`, not null]
+  ngay_cap_nhat timestamp [default: `now()`, not null]
+}
+
+Enum LoaiTrangThaiNhanVien {
+  dang_hoat_dong
+  da_nghi_viec
+}
+
+Table VaiTro {
+  Note: '''
+  ### Bảng Vai Trò (RBAC)
+  - **Mục đích**: Định nghĩa các vai trò trong hệ thống (Role-Based Access Control).
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ dữ liệu của bảng.
+  - **Thời gian**: Dữ liệu cực kỳ tĩnh. Cache vô thời hạn hoặc dài hạn (24 giờ).
+  - **Invalidate**: Khi có thay đổi trong trang admin hoặc khi deploy code mới.
+  '''
+  id int [pk, increment]
+  ten_vai_tro varchar(50) [unique, not null, note: 'Tên định danh vai trò. VD: "Admin", "Quản lý Kho", "Bán hàng"']
+  mo_ta text [note: 'Mô tả chi tiết các quyền của vai trò này']
+  trang_thai LoaiTrangThaiHoatDong [not null, default: 'hoat_dong', note: 'Cho phép tạm ngưng một vai trò mà không cần xóa']
+}
+
+Table VaiTroNhanVien {
+  Note: '''
+  ### Bảng Vai Trò - Nhân Viên
+  - **Mục đích**: Bảng trung gian gán vai trò cho nhân viên.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Danh sách `id_vai_tro` theo `id_nhan_vien`.
+  - **Thời gian**: Cache cùng với thông tin nhân viên.
+  - **Invalidate**: Khi phân quyền cho nhân viên được thay đổi.
+  '''
+  id_nhan_vien int [not null, note: 'Khóa ngoại đến bảng NhanVien']
+  id_vai_tro int [not null, note: 'Khóa ngoại đến bảng VaiTro']
+indexes { (id_nhan_vien, id_vai_tro) [pk, note: 'Một nhân viên có thể có nhiều vai trò'] }
+
+}
+
+Table Quyen {
+  Note: '''
+  ### Bảng Quyền (RBAC)
+  - **Mục đích**: Định nghĩa các quyền hạn chi tiết trong hệ thống.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ dữ liệu của bảng.
+  - **Thời gian**: Dữ liệu cực kỳ tĩnh. Cache vô thời hạn.
+  - **Invalidate**: Chỉ khi deploy code mới có thêm/bớt quyền.
+  '''
+  id int [pk, increment]
+  ten_quyen varchar(100) [unique, not null, note: 'Tên quyền duy nhất, thường theo format `resource:action`. VD: "product:create", "order:update_status"']
+  nhom_quyen varchar(50) [not null, note: 'Nhóm quyền để dễ quản lý trên UI. VD: "Product", "Order", "User"']
+  mo_ta text
+}
+
+Table QuyenVaiTro {
+  Note: '''
+  ### Bảng Quyền - Vai Trò
+  - **Mục đích**: Bảng trung gian gán quyền cho vai trò.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Danh sách `id_quyen` theo `id_vai_tro`.
+  - **Thời gian**: Cache cùng với thông tin vai trò.
+  - **Invalidate**: Khi phân quyền cho vai trò được thay đổi.
+  '''
+  id_vai_tro int [not null, note: 'Khóa ngoại đến VaiTro']
+  id_quyen int [not null, note: 'Khóa ngoại đến Quyen']
+indexes { (id_vai_tro, id_quyen) [pk, note: 'Gán một quyền cho một vai trò'] }
+
+}
+
+// == BẢNG MỞ RỘNG: KHÁCH HÀNG THÂN THIẾT & B2B ==
+Table HangThanhVien {
+  Note: '''
+  ### Bảng Hạng Thành Viên
+  - **Mục đích**: Định nghĩa các cấp độ khách hàng thân thiết.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ dữ liệu của bảng.
+  - **Thời gian**: Dữ liệu tĩnh. Cache dài hạn (vài giờ).
+  - **Invalidate**: Khi admin thay đổi cấu hình hạng thành viên.
+  '''
+  id int [pk, increment]
+  ten_hang varchar(100) [unique, not null, note: 'Tên hạng thành viên. VD: Đồng, Bạc, Vàng, Kim Cương']
+  nguong_diem_can_dat int [not null, note: 'Số điểm tối thiểu để đạt được hạng này']
+  mo_ta_quyen_loi text [note: 'Mô tả các quyền lợi của hạng thành viên, có thể hiển thị cho khách hàng.']
+}
+
+Table LichSuDiemTichLuy {
+  Note: '''
+  ### Bảng Lịch Sử Điểm Tích Lũy
+  - **Mục đích**: Ghi lại mọi giao dịch làm thay đổi điểm của khách hàng. Đây là nguồn dữ liệu "source of truth" cho điểm.
+  - **Thiết kế**: Bảng log, chỉ ghi (append-only).
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Dữ liệu mang tính giao dịch và cần được truy vấn trực tiếp để đảm bảo tính chính xác.
+  '''
+  id bigserial [pk]
+  id_nguoi_dung int [not null]
+  diem_thay_doi int [not null, note: 'Số điểm thay đổi (dương: tích điểm, âm: tiêu điểm)']
+  loai_giao_dich LoaiGiaoDichDiem [not null, note: 'Loại giao dịch gây ra thay đổi điểm']
+  id_hoa_don int [note: 'ID hóa đơn liên quan (nếu có)']
+  ghi_chu text [note: 'Ghi chú chi tiết, VD: "Admin điều chỉnh điểm thưởng"']
+  ngay_tao timestamp [default: `now()`, not null]
+}
+
+Enum LoaiGiaoDichDiem {
+  mua_hang
+  su_dung_diem
+  thang_hang
+  dieu_chinh_boi_admin
+  tra_hang
+}
+
+Table NhomKhachHang {
+  Note: '''
+  ### Bảng Nhóm Khách Hàng
+  - **Mục đích**: Phân khúc khách hàng để áp dụng các chương trình khuyến mãi, marketing riêng.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ dữ liệu của bảng.
+  - **Thời gian**: Dữ liệu ít thay đổi. Cache dài hạn (vài giờ).
+  - **Invalidate**: Khi admin tạo/sửa/xóa nhóm.
+  '''
+  id int [pk, increment]
+  ten_nhom varchar(255) [unique, not null, note: 'Tên nhóm khách hàng. VD: "Khách hàng mới", "VIP", "Khách hàng mua nhiều"']
+  mo_ta text
+}
+
+Table NhomKhachHang_NguoiDung {
+  Note: '''
+  ### Bảng Nhóm Khách Hàng - Người Dùng
+  - **Mục đích**: Gán người dùng vào các nhóm khách hàng. Việc gán có thể thực hiện thủ công hoặc tự động bởi một job.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE** trực tiếp. Dữ liệu về nhóm của một người dùng có thể được cache cùng với thông tin người dùng trong phiên làm việc.
+  '''
+  id_nhom_khach_hang int [not null]
+  id_nguoi_dung int [not null]
+indexes { (id_nhom_khach_hang, id_nguoi_dung) [pk] }
+
+}
+
+Table CongTy {
+  Note: '''
+  ### Bảng Công Ty (B2B)
+  - **Mục đích**: Lưu trữ thông tin khách hàng doanh nghiệp.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Thông tin công ty theo ID.
+  - **Thời gian**: Dữ liệu ít thay đổi. Cache dài hạn (vài giờ).
+  - **Invalidate**: Khi có cập nhật thông tin.
+  '''
+  id int [pk, increment]
+  ten_cong_ty varchar(255) [not null]
+  ma_so_thue varchar(50) [unique]
+  dia_chi_xuat_hoa_don text
+  email_cong_ty varchar(255)
+  sdt_cong_ty varchar(20)
+  ghi_chu text
+}
+
+// =============================================
+// == NHÓM 2: SẢN PHẨM & DANH MỤC
+// =============================================
+
+Table SanPham {
+  Note: '''
+  ### Bảng Sản Phẩm
+  - **Mục đích**: Lưu thông tin chung nhất của một sản phẩm.
+  - **Thiết kế**: Một `SanPham` có thể có nhiều `BienTheSanPham`.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Dữ liệu sản phẩm, danh sách biến thể, hình ảnh, thuộc tính.
+  - **Thời gian**: Dữ liệu được đọc nhiều. Cache trung hạn (5-15 phút).
+  - **Invalidate**: Khi admin cập nhật sản phẩm hoặc các thông tin liên quan. Sử dụng cơ chế cache-invalidation (xóa cache khi có thay đổi).
+  '''
+  id int [pk, increment]
+  ten_san_pham varchar(255) [not null, note: 'Tên hiển thị của sản phẩm']
+  mo_ta text [note: 'Mô tả chi tiết về sản phẩm, hỗ trợ HTML hoặc Markdown']
+  trang_thai LoaiTrangThaiSanPham [not null, default: 'dang_ban', note: 'Trạng thái kinh doanh của sản phẩm (hiện, ẩn,...)']
+  ngay_xoa timestamp [note: 'Soft-delete: Đánh dấu thời điểm xóa. NULL nếu chưa bị xóa.']
+  ngay_tao timestamp [default: `now()`, not null]
+  ngay_cap_nhat timestamp [default: `now()`, not null]
+}
+
+Enum LoaiTrangThaiSanPham {
+  dang_ban
+  an
+  ngung_kinh_doanh
+}
+
+Table BienTheSanPham {
+  Note: '''
+  ### Bảng Biến Thể Sản Phẩm
+  - **Mục đích**: Đại diện cho một phiên bản cụ thể có thể bán được của sản phẩm (SKU). Ví dụ: Áo thun A, size L, màu Đỏ.
+
+  **Chiến lược Cache:**
+  - **Chiến lược**: Cache cùng với `SanPham` cha.
+  '''
+  id int [pk, increment]
+  id_san_pham int [not null, note: 'Khóa ngoại, cho biết biến thể này thuộc sản phẩm nào']
+  sku varchar(100) [unique, not null, note: 'SKU (Stock Keeping Unit) - Mã định danh duy nhất cho từng biến thể, dùng để quản lý kho']
+  ten_bien_the varchar(255) [not null, note: 'Tên của biến thể. VD: "Màu Đỏ, Size L" (có thể được tạo tự động từ thuộc tính)']
+  gia_ban decimal(15, 2) [not null, note: 'Giá bán thực tế của biến thể này']
+  cho_phep_dat_truoc boolean [default: false, not null, note: 'True nếu sản phẩm này có thể đặt trước khi hết hàng']
+  trang_thai LoaiTrangThaiSanPham [not null, default: 'dang_ban', note: 'Cho phép ẩn/hiện một biến thể cụ thể']
+  ngay_xoa timestamp [note: 'Soft-delete: Đánh dấu thời điểm xóa. NULL nếu chưa bị xóa.']
+  ngay_tao timestamp [default: `now()`, not null]
+  ngay_cap_nhat timestamp [default: `now()`, not null]
+}
+
+// == BẢNG MỞ RỘNG: THUỘC TÍNH SẢN PHẨM ĐỘNG ==
+Table ThuocTinh {
+  Note: '''
+  ### Bảng Thuộc Tính
+  - **Mục đích**: Định nghĩa các loại thuộc tính có thể có của sản phẩm.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ bảng.
+  - **Thời gian**: Dữ liệu tĩnh. Cache dài hạn.
+  - **Invalidate**: Khi admin thêm/sửa/xóa thuộc tính.
+  '''
+  id int [pk, increment]
+  ten_thuoc_tinh varchar(100) [unique, not null, note: 'Tên thuộc tính. VD: "Màu sắc", "Kích thước", "Chất liệu"']
+}
+
+Table GiaTriThuocTinh {
+  Note: '''
+  ### Bảng Giá Trị Thuộc Tính
+  - **Mục đích**: Lưu các giá trị có thể có cho mỗi thuộc tính.
+
+  **Chiến lược Cache:**
+  - **Chiến lược**: Cache cùng với `ThuocTinh` cha.
+  '''
+  id int [pk, increment]
+  id_thuoc_tinh int [not null]
+  gia_tri varchar(100) [not null, note: 'Giá trị của thuộc tính. VD: "Đỏ", "Xanh", "S", "M"']
+indexes { (id_thuoc_tinh, gia_tri) [unique] }
+
+}
+
+Table BienThe_GiaTriThuocTinh {
+  Note: '''
+  ### Bảng nối Biến Thể và Giá Trị Thuộc Tính
+  - **Mục đích**: Gán các cặp (thuộc tính, giá trị) cho một biến thể.
+
+  **Chiến lược Cache:**
+  - **Chiến lược**: Cache cùng với `BienTheSanPham`.
+  '''
+  id_bien_the int [not null]
+  id_gia_tri_thuoc_tinh int [not null]
+indexes { (id_bien_the, id_gia_tri_thuoc_tinh) [pk] }
+
+}
+
+Table HinhAnh {
+  Note: '''
+  ### Bảng Hình Ảnh
+  - **Mục đích**: Quản lý tập trung hình ảnh cho sản phẩm và biến thể.
+
+  **Chiến lược Cache:**
+  - **Chiến lược**: Cache cùng với `SanPham` hoặc `BienTheSanPham`.
+  '''
+  id int [pk, increment]
+  url varchar(255) [not null, note: 'Đường dẫn (URL) của file ảnh, thường là trên CDN']
+  alt_text varchar(255) [note: 'Văn bản thay thế cho ảnh, quan trọng cho SEO']
+  id_san_pham int [not null, note: 'Ảnh này thuộc về sản phẩm nào']
+  id_bien_the int [note: 'Nếu ảnh này chỉ dành riêng cho một biến thể cụ thể. Null nếu là ảnh chung cho sản phẩm.']
+}
+
+Table Tag {
+  Note: '''
+  ### Bảng Tag
+  - **Mục đích**: Tạo các danh mục/nhãn linh hoạt cho sản phẩm.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ bảng.
+  - **Thời gian**: Dữ liệu tĩnh. Cache dài hạn.
+  - **Invalidate**: Khi admin quản lý tag.
+  '''
+  id int [pk, increment]
+  ten_tag varchar(50) [unique, not null, note: 'Tên của tag/danh mục. VD: "Áo thun", "Hàng mới về"']
+  mo_ta text
+  ngay_xoa timestamp [note: 'Soft-delete: Cho phép xóa tag mà không ảnh hưởng đến sản phẩm cũ đã gắn tag này']
+}
+
+Table TagSanPham {
+  Note: '''
+  ### Bảng nối Tag và Sản Phẩm
+  - **Mục đích**: Quan hệ nhiều-nhiều giữa `SanPham` và `Tag`.
+
+  **Chiến lược Cache:**
+  - **Chiến lược**: Cache danh sách tag cùng với `SanPham`.
+  '''
+  id_san_pham int [not null]
+  id_tag int [not null]
+indexes { (id_san_pham, id_tag) [pk] }
+
+}
+
+Table DanhGiaSanPham {
+  Note: '''
+  ### Bảng Đánh Giá Sản Phẩm
+  - **Mục đích**: Lưu trữ đánh giá, bình luận của khách hàng về sản phẩm.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Danh sách đánh giá theo `id_san_pham`.
+  - **Thời gian**: Cache trung hạn (15-30 phút).
+  - **Invalidate**: Khi có đánh giá mới được duyệt.
+  '''
+  id int [pk, increment]
+  id_hoa_don int [not null, note: 'Khóa ngoại, chỉ những ai đã mua hàng (có hóa đơn) mới được đánh giá']
+  id_san_pham int [not null, note: 'Sản phẩm được đánh giá']
+  id_nguoi_dung int [not null, note: 'Người dùng thực hiện đánh giá']
+  so_sao int [not null, note: 'Số sao đánh giá, từ 1 đến 5']
+  binh_luan text [note: 'Nội dung bình luận chi tiết']
+  trang_thai LoaiTrangThaiBinhLuan [not null, default: 'da_duyet', note: 'Trạng thái kiểm duyệt đánh giá']
+  ngay_tao timestamp [default: `now()`, not null]
+}
+
+// =============================================
+// == NHÓM 3: KHO HÀNG & NHÀ CUNG CẤP
+// =============================================
+
+Table CuaHang {
+  Note: '''
+  ### Bảng Cửa Hàng
+  - **Mục đích**: Quản lý các chi nhánh cửa hàng vật lý hoặc kho hàng online.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ bảng.
+  - **Thời gian**: Dữ liệu rất tĩnh. Cache dài hạn (vài giờ).
+  - **Invalidate**: Khi admin thay đổi thông tin cửa hàng.
+  '''
+  id int [pk, increment]
+  ten_cua_hang varchar(255) [unique, not null, note: 'Tên chi nhánh/cửa hàng. VD: "Chi nhánh Quận 1", "Kho online"']
+  dia_chi varchar(255) [not null, note: 'Địa chỉ của cửa hàng/kho']
+  so_dien_thoai varchar(20)
+  trang_thai LoaiTrangThaiCuaHang [not null, default: 'dang_hoat_dong', note: 'Quản lý trạng thái hoạt động của cửa hàng']
+}
+
+Enum LoaiTrangThaiCuaHang {
+  dang_hoat_dong
+  tam_ngung
+  da_dong_cua
+}
+
+Table TonKho {
+  Note: '''
+  ### Bảng Tồn Kho
+  - **Mục đích**: Quản lý số lượng tồn kho của từng biến thể sản phẩm tại từng cửa hàng/kho.
+  - **Thiết kế**: Đây là bảng có tần suất cập nhật cao nhất trong hệ thống.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Dữ liệu tồn kho phải luôn được đọc từ DB để đảm bảo tính chính xác tuyệt đối, tránh tình trạng bán quá số lượng hàng có (overselling).
+  '''
+  id_bien_the int [not null, note: 'Khóa ngoại đến biến thể sản phẩm']
+  id_cua_hang int [not null, note: 'Khóa ngoại đến cửa hàng/kho chứa sản phẩm']
+  so_luong int [not null, default: 0, note: 'Số lượng tồn kho của biến thể tại cửa hàng tương ứng']
+indexes { (id_bien_the, id_cua_hang) [pk] }
+
+}
+
+Table NhaCungCap {
+  Note: '''
+  ### Bảng Nhà Cung Cấp
+  - **Mục đích**: Quản lý thông tin các đối tác cung cấp hàng hóa.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ bảng.
+  - **Thời gian**: Dữ liệu tĩnh. Cache dài hạn.
+  - **Invalidate**: Khi admin cập nhật thông tin nhà cung cấp.
+  '''
+  id int [pk, increment]
+  ten_nha_cung_cap varchar(255) [unique, not null, note: 'Tên công ty/đơn vị cung cấp hàng']
+  nguoi_lien_he varchar(255)
+  email varchar(255)
+  so_dien_thoai varchar(20)
+  dia_chi text
+  trang_thai LoaiTrangThaiHopTac [not null, default: 'dang_hop_tac', note: 'Quản lý tình trạng hợp tác với nhà cung cấp']
+}
+
+Enum LoaiTrangThaiHopTac {
+  dang_hop_tac
+  ngung_hop_tac
+}
+
+Table PhieuNhapKho {
+  Note: '''
+  ### Bảng Phiếu Nhập Kho
+  - **Mục đích**: Ghi lại thông tin tổng quan của một lần nhập hàng.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Dữ liệu nghiệp vụ backend, mang tính giao dịch.
+  '''
+  id int [pk, increment]
+  ma_phieu varchar(50) [unique, not null, note: 'Mã tham chiếu cho phiếu nhập, có thể do người dùng tự đặt']
+  id_nha_cung_cap int [not null, note: 'Nhập hàng từ nhà cung cấp nào']
+  id_nhan_vien_tao int [not null, note: 'Nhân viên nào tạo phiếu nhập']
+  id_cua_hang_nhap int [not null, note: 'Hàng được nhập vào kho/cửa hàng nào']
+  tong_tien decimal(15, 2) [not null, note: 'Tổng giá trị của phiếu nhập, tự động tính từ chi tiết']
+  ngay_nhap timestamp [default: `now()`, not null, note: 'Ngày thực tế nhập hàng vào kho']
+  ghi_chu text
+}
+
+Table ChiTietPhieuNhap {
+  Note: '''
+  ### Bảng Chi Tiết Phiếu Nhập
+  - **Mục đích**: Ghi lại từng sản phẩm, số lượng và giá nhập trong một phiếu nhập. Quan trọng để tính giá vốn hàng bán (COGS).
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**.
+  '''
+  id int [pk, increment]
+  id_phieu_nhap int [not null, note: 'Thuộc phiếu nhập kho nào']
+  id_bien_the int [not null, note: 'Sản phẩm (biến thể) được nhập']
+  so_luong_nhap int [not null, note: 'Số lượng nhập của sản phẩm này']
+  don_gia_nhap decimal(15, 2) [not null, note: 'Giá nhập trên mỗi đơn vị sản phẩm tại thời điểm nhập']
+  thanh_tien decimal(15, 2) [not null, note: 'so_luong_nhap * don_gia_nhap']
+}
+
+// =============================================
+// == NHÓM 4: BÁN HÀNG & THANH TOÁN
+// =============================================
+
+Table GioHang {
+  Note: '''
+  ### Bảng Giỏ Hàng
+  - **Mục đích**: Lưu trữ các sản phẩm người dùng đã chọn nhưng chưa thanh toán.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Dữ liệu của riêng từng người dùng và thay đổi liên tục. Thường được quản lý trong session hoặc state của client-side.
+  '''
+  id int [pk, increment]
+  id_nguoi_dung int [not null, note: 'Giỏ hàng của người dùng nào']
+  id_bien_the int [not null, note: 'Sản phẩm (biến thể) trong giỏ']
+  so_luong int [not null, default: 1]
+  ngay_tao timestamp [default: `now()`, not null]
+  ngay_cap_nhat timestamp [default: `now()`, not null]
+indexes { (id_nguoi_dung, id_bien_the) [unique, note: 'Mỗi người dùng chỉ có 1 dòng cho 1 biến thể trong giỏ hàng'] }
+
+}
+
+Table Voucher {
+  Note: '''
+  ### Bảng Voucher
+  - **Mục đích**: Quản lý các mã giảm giá mà khách hàng có thể nhập thủ công.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Các voucher đang hoạt động (`trang_thai` = 'hoat_dong' và trong thời gian hiệu lực).
+  - **Thời gian**: Cache ngắn hạn (1-5 phút) để phản ánh nhanh các thay đổi về số lượng.
+  - **Invalidate**: Khi admin cập nhật voucher.
+  '''
+  id int [pk, increment]
+  ma_voucher varchar(50) [unique, not null, note: 'Mã code khách hàng sẽ nhập']
+  tieu_de varchar(255) [not null, note: 'Tên chương trình khuyến mãi']
+  mo_ta text
+  loai_giam_gia LoaiGiamGia [not null, note: 'Giảm theo % hay số tiền cố định']
+  gia_tri_giam decimal(15, 2) [not null, note: 'Số tiền hoặc % được giảm']
+  don_hang_toi_thieu decimal(15, 2) [default: 0, note: 'Giá trị đơn hàng tối thiểu để áp dụng voucher']
+  giam_gia_toi_da decimal(15, 2) [note: 'Số tiền giảm tối đa (chỉ áp dụng cho loại_giam_gia là phan_tram)']
+  ngay_bat_dau timestamp [not null, note: 'Thời gian voucher bắt đầu có hiệu lực']
+  ngay_ket_thuc timestamp [not null, note: 'Thời gian voucher hết hiệu lực']
+  so_luong_ban_dau int [not null, note: 'Tổng số lượt sử dụng của voucher này']
+  so_luong_da_dung int [not null, default: 0, note: 'Số lượt đã được sử dụng, được cập nhật bằng transaction để tránh race condition']
+  trang_thai LoaiTrangThaiHoatDong [not null, default: 'hoat_dong', note: 'Cho phép admin tạm ngưng voucher thủ công']
+}
+
+Enum LoaiGiamGia {
+  phan_tram
+  so_tien
+}
+
+// == BẢNG MỞ RỘNG: KHUYẾN MÃI TỰ ĐỘNG ==
+Table KhuyenMai {
+  Note: '''
+  ### Bảng Khuyến Mãi Tự Động
+  - **Mục đích**: Quản lý các chương trình khuyến mãi phức tạp, tự động áp dụng khi thỏa mãn điều kiện.
+  - **Thiết kế**: Sử dụng `jsonb` để định nghĩa các quy tắc linh hoạt mà không cần thay đổi cấu trúc DB.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Các khuyến mãi đang hoạt động.
+  - **Thời gian**: Cache ngắn hạn (5-10 phút).
+  - **Invalidate**: Khi admin cập nhật khuyến mãi.
+  '''
+  id int [pk, increment]
+  ten_khuyen_mai varchar(255) [not null, note: 'Tên chương trình khuyến mãi tự động']
+  mo_ta text
+  loai_khuyen_mai LoaiKhuyenMai [not null, note: 'Xác định logic của khuyến mãi']
+  dieu_kien jsonb [not null, note: 'Lưu các điều kiện áp dụng dưới dạng JSON. VD: ` {"min_cart_total": 500000, "required_product_ids": [1, 2], "customer_group_ids": [3]}`']
+  hanh_dong jsonb [not null, note: 'Lưu các hành động khuyến mãi dưới dạng JSON. VD: ` {"discount_type": "percentage", "value": 10}` hoặc ` {"gift_variant_id": 123, "quantity": 1}`']
+  ngay_bat_dau timestamp [not null]
+  ngay_ket_thuc timestamp [not null]
+  trang_thai LoaiTrangThaiHoatDong [not null, default: 'hoat_dong']
+}
+
+Enum LoaiKhuyenMai {
+  GIAM_GIA_DON_HANG // Giảm giá trên tổng đơn hàng
+  MUA_X_TANG_Y // Mua sản phẩm X được tặng sản phẩm Y
+  GIAM_GIA_SAN_PHAM // Giảm giá cho các sản phẩm/danh mục cụ thể
+  MIEN_PHI_VAN_CHUYEN
+}
+
+Table HoaDon {
+  Note: '''
+  ### Bảng Hóa Đơn
+  - **Mục đích**: Bảng trung tâm của nghiệp vụ bán hàng, lưu lại thông tin một giao dịch mua bán.
+  - **Thiết kế**: Sử dụng các trường `_snapshot` để "đóng băng" thông tin tại thời điểm tạo đơn, đảm bảo dữ liệu lịch sử không bị ảnh hưởng bởi các thay đổi sau này (VD: khách hàng đổi tên, sản phẩm đổi giá).
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Dữ liệu giao dịch, cần tính chính xác cao.
+  '''
+  id int [pk, increment]
+  ma_hoa_don varchar(50) [unique, not null, note: 'Mã định danh duy nhất cho hóa đơn, dễ tra cứu']
+  id_nguoi_dung int [note: 'ID của khách hàng. SET NULL nếu khách hàng bị xóa.']
+  id_nhan_vien int [note: 'ID nhân viên tạo đơn. SET NULL nếu nhân viên bị xóa.']
+  id_cua_hang int [note: 'Đơn hàng được tạo tại cửa hàng nào. Null nếu là đơn online.']
+  loai_hoa_don LoaiHoaDon [not null, note: 'Phân biệt đơn online, tại quầy, đặt trước']
+  id_voucher int
+  ten_nguoi_dung_snapshot varchar(255) [not null, note: 'Snapshot tên khách hàng tại thời điểm mua']
+  email_nguoi_dung_snapshot varchar(255) [note: 'Snapshot email khách hàng']
+  sdt_nguoi_dung_snapshot varchar(20) [note: 'Snapshot SĐT khách hàng']
+  dia_chi_giao_hang_snapshot text [note: 'Snapshot địa chỉ giao hàng đầy đủ']
+  ten_nhan_vien_snapshot varchar(255) [note: 'Snapshot tên nhân viên tạo đơn']
+  tong_tien_hang decimal(15, 2) [not null, note: 'Tổng giá trị sản phẩm trước khi có khuyến mãi, phụ phí']
+  phi_giao_hang decimal(15, 2) [default: 0, note: 'Tổng chi phí vận chuyển khách hàng trả (chỉ 1 lần)']
+  tien_giam_gia decimal(15, 2) [default: 0, note: 'Số tiền được giảm từ voucher/khuyến mãi']
+  tong_thanh_toan decimal(15, 2) [not null, note: 'Số tiền cuối cùng khách phải trả']
+  id_trang_thai_don_hang int [not null]
+  id_phuong_thuc_thanh_toan int [not null]
+  id_trang_thai_thanh_toan int [not null]
+  ngay_tao timestamp [default: `now()`, not null]
+  ngay_cap_nhat timestamp [default: `now()`, not null]
+}
+
+Enum LoaiHoaDon {
+  online
+  tai_cua_hang
+  dat_truoc
+}
+
+Table ChiTietHoaDon {
+  Note: '''
+  ### Bảng Chi Tiết Hóa Đơn
+  - **Mục đích**: Lưu các "line item" của một `HoaDon`.
+  - **Thiết kế**: Lưu snapshot thông tin sản phẩm và giá bán để đảm bảo dữ liệu lịch sử không bị thay đổi.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**.
+  '''
+  id int [pk, increment]
+  id_hoa_don int [not null, note: 'Thuộc hóa đơn nào']
+  id_bien_the int [note: 'ID của biến thể. SET NULL nếu biến thể bị xóa.']
+  sku_snapshot varchar(100) [not null, note: 'Snapshot SKU của biến thể']
+  ten_san_pham_snapshot varchar(255) [not null, note: 'Snapshot tên sản phẩm']
+  ten_bien_the_snapshot varchar(255) [not null, note: 'Snapshot tên biến thể']
+  so_luong int [not null]
+  don_gia decimal(15, 2) [not null, note: 'Giá của sản phẩm tại thời điểm mua hàng (bất biến)']
+  thanh_tien decimal(15, 2) [not null, note: 'don_gia * so_luong']
+}
+
+Table GoiGiaoHang {
+  Note: '''
+  ### Bảng Gói Giao Hàng
+  - **Mục đích**: Giải quyết bài toán tách đơn hàng (split shipment). Một `HoaDon` có thể được chia thành nhiều gói để vận chuyển từ nhiều kho hoặc vào nhiều thời điểm khác nhau.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**.
+  '''
+  id int [pk, increment]
+  id_hoa_don int [not null, note: 'Gói hàng này thuộc hóa đơn nào']
+  ma_goi_hang varchar(50) [unique, not null, note: 'Mã nội bộ để quản lý gói hàng']
+  don_vi_van_chuyen varchar(100) [note: 'Tên đơn vị vận chuyển cho gói này. VD: "GHTK"']
+  ma_van_don varchar(100) [note: 'Mã tracking của đơn vị vận chuyển cho gói này']
+  chi_phi_van_chuyen_thuc_te decimal(15, 2) [note: 'Chi phí shop trả cho DVVC cho gói này (để đối soát)']
+  trang_thai LoaiTrangThaiGiaoHang [not null, default: 'cho_lay_hang']
+  ngay_gui_hang timestamp [note: 'Thời điểm shop bàn giao gói hàng cho ĐVVC']
+  ngay_nhan_du_kien date
+  ghi_chu_giao_hang text
+}
+
+Enum LoaiTrangThaiGiaoHang {
+  cho_lay_hang
+  dang_giao
+  giao_thanh_cong
+  that_bai
+  dang_hoan
+}
+
+Table ChiTietGoiGiaoHang {
+  Note: '''
+  ### Bảng Chi Tiết Gói Giao Hàng
+  - **Mục đích**: Chỉ định sản phẩm nào (`ChiTietHoaDon`) và số lượng bao nhiêu được đóng trong `GoiGiaoHang` nào.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**.
+  '''
+  id_goi_giao_hang int [not null, note: 'Khóa ngoại đến gói giao hàng']
+  id_chi_tiet_hoa_don int [not null, note: 'Khóa ngoại đến sản phẩm trong hóa đơn']
+  so_luong int [not null, note: 'Số lượng của sản phẩm này được đóng trong gói hàng này']
+indexes { (id_goi_giao_hang, id_chi_tiet_hoa_don) [pk] }
+
+}
+
+Table DonTraHang {
+  Note: '''
+  ### Bảng Đơn Trả Hàng
+  - **Mục đích**: Quản lý yêu cầu trả hàng của khách.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**.
+  '''
+  id int [pk, increment]
+  ma_don_tra varchar(50) [unique, not null, note: 'Mã định danh cho đơn trả hàng']
+  id_hoa_don_goc int [not null, note: 'Đơn hàng gốc mà khách muốn trả']
+  id_nhan_vien_xu_ly int [not null, note: 'Nhân viên xử lý yêu cầu trả hàng']
+  ly_do_tra_hang text [not null, note: 'Lý do khách hàng muốn trả hàng']
+  tong_tien_hoan decimal(15, 2) [not null, note: 'Số tiền hoàn lại cho khách']
+  trang_thai LoaiTrangThaiDonTra [not null, note: 'Trạng thái của yêu cầu trả hàng']
+  ngay_tao timestamp [default: `now()`, not null]
+}
+
+Enum LoaiTrangThaiDonTra {
+  dang_cho_xu_ly
+  da_chap_nhan
+  da_tu_choi
+  da_hoan_thanh
+}
+
+Table ChiTietDonTraHang {
+  Note: '''
+  ### Bảng Chi Tiết Đơn Trả Hàng
+  - **Mục đích**: Ghi lại sản phẩm và số lượng được trả trong một đơn trả hàng.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**.
+  '''
+  id int [pk, increment]
+  id_don_tra_hang int [not null, note: 'Thuộc đơn trả hàng nào']
+  id_chi_tiet_hoa_don int [not null, note: 'Sản phẩm cụ thể trong hóa đơn gốc được trả']
+  so_luong_tra int [not null, note: 'Số lượng sản phẩm được trả']
+}
+
+// == BẢNG MỞ RỘNG: LỊCH SỬ THANH TOÁN & HOÀN TIỀN ==
+Table LichSuGiaoDichThanhToan {
+  Note: '''
+  ### Bảng Lịch Sử Giao Dịch Thanh Toán
+  - **Mục đích**: Ghi log chi tiết mọi giao dịch với cổng thanh toán, phục vụ cho việc đối soát và xử lý lỗi.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Bảng log.
+  '''
+  id bigserial [pk]
+  id_hoa_don int [not null]
+  ma_giao_dich_gateway varchar(255) [note: 'Mã giao dịch từ cổng thanh toán (VNPAY, Momo...). Rất quan trọng để đối soát.']
+  so_tien decimal(15, 2) [not null]
+  phuong_thuc_thanh_toan varchar(100) [not null, note: 'Snapshot tên phương thức thanh toán']
+  trang_thai LoaiTrangThaiGiaoDich [not null]
+  thong_bao_loi text [note: 'Lưu lại thông báo lỗi từ gateway nếu giao dịch thất bại']
+  ngay_giao_dich timestamp [default: `now()`, not null]
+}
+
+Table GiaoDichHoanTien {
+  Note: '''
+  ### Bảng Giao Dịch Hoàn Tiền
+  - **Mục đích**: Ghi lại chi tiết các giao dịch hoàn tiền cho khách.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Bảng log.
+  '''
+  id bigserial [pk]
+  id_don_tra_hang int [not null]
+  ma_giao_dich_hoan_tien varchar(255) [note: 'Mã giao dịch hoàn tiền (nếu có)']
+  so_tien_hoan decimal(15, 2) [not null]
+  phuong_thuc_hoan_tien varchar(100) [not null, note: 'VD: Chuyển khoản, Hoàn vào thẻ tín dụng']
+  trang_thai LoaiTrangThaiGiaoDich [not null]
+  ghi_chu text
+  ngay_hoan_tien timestamp [default: `now()`, not null]
+}
+
+Enum LoaiTrangThaiGiaoDich {
+  thanh_cong
+  that_bai
+  dang_xu_ly
+}
+
+// =============================================
+// == NHÓM 5: BẢNG THAM CHIẾU & ENUMS CHUNG
+// =============================================
+
+Table TrangThaiDonHang {
+  Note: '''
+  ### Bảng Trạng Thái Đơn Hàng
+  - **Mục đích**: Bảng tham chiếu, định nghĩa các trạng thái có thể có của một đơn hàng.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ bảng.
+  - **Thời gian**: Dữ liệu cực kỳ tĩnh. Cache vô thời hạn.
+  - **Invalidate**: Khi deploy code mới có thay đổi về quy trình.
+  '''
+  id int [pk]
+  ten_trang_thai varchar(50) [unique, not null, note: 'VD: "Chờ xác nhận", "Đang xử lý", "Chờ hàng về", "Đang giao", "Hoàn thành", "Đã hủy"']
+}
+
+Table PhuongThucThanhToan {
+  Note: '''
+  ### Bảng Phương Thức Thanh Toán
+  - **Mục đích**: Bảng tham chiếu, định nghĩa các phương thức thanh toán được hỗ trợ.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ bảng.
+  - **Thời gian**: Dữ liệu cực kỳ tĩnh. Cache vô thời hạn.
+  - **Invalidate**: Khi admin thêm/bớt phương thức thanh toán.
+  '''
+  id int [pk]
+  ten_phuong_thuc varchar(50) [unique, not null, note: 'VD: "Thanh toán khi nhận hàng (COD)", "Chuyển khoản", "Thanh toán bằng thẻ", "Ví điện tử"']
+}
+
+Table TrangThaiThanhToan {
+  Note: '''
+  ### Bảng Trạng Thái Thanh Toán
+  - **Mục đích**: Bảng tham chiếu, định nghĩa các trạng thái thanh toán của đơn hàng.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Toàn bộ bảng.
+  - **Thời gian**: Dữ liệu cực kỳ tĩnh. Cache vô thời hạn.
+  - **Invalidate**: Khi deploy code mới.
+  '''
+  id int [pk]
+  ten_trang_thai varchar(50) [unique, not null, note: 'VD: "Chưa thanh toán", "Đã thanh toán", "Thất bại", "Đã hoàn tiền"']
+}
+
+Enum LoaiTrangThaiHoatDong {
+  hoat_dong
+  ngung_hoat_dong
+}
+
+// =============================================
+// == NHÓM 6: LỊCH SỬ, BÁO CÁO & CÁ NHÂN HÓA
+// =============================================
+
+Table NhatKyHoatDong {
+  Note: '''
+  ### Bảng Nhật Ký Hoạt Động (Audit Trail)
+  - **Mục đích**: Ghi lại TOÀN BỘ các hành động quan trọng trong hệ thống, phục vụ cho việc kiểm toán, gỡ lỗi và theo dõi.
+  - **Thiết kế**: Bảng ghi nhiều (write-heavy), có thể rất lớn. Cần chiến lược dọn dẹp hoặc lưu trữ (archive) định kỳ.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Bảng log.
+  '''
+  id bigserial [pk, note: 'ID tự tăng, dùng bigserial vì bảng này sẽ rất lớn']
+  id_nguoi_thuc_hien int [note: 'ID của người thực hiện hành động (có thể là nhân viên hoặc người dùng)']
+  loai_nguoi_thuc_hien LoaiNguoiThucHien [not null, note: 'Phân biệt người thực hiện là Nhân viên hay Người dùng']
+  hanh_dong varchar(100) [not null, note: 'Hành động đã thực hiện. VD: "TAO_HOA_DON", "CAP_NHAT_SAN_PHAM", "GAN_QUYEN_CHO_VAI_TRO"']
+  doi_tuong varchar(100) [not null, note: 'Tên bảng của đối tượng bị tác động. VD: "HoaDon", "SanPham", "VaiTroNhanVien"']
+  id_doi_tuong varchar(255) [not null, note: 'ID của bản ghi bị tác động (dùng varchar để linh hoạt)']
+  du_lieu_thay_doi jsonb [note: 'Lưu trữ chi tiết thay đổi dưới dạng JSON. VD: ` {"truoc": {...}, "sau": {...}}`']
+  ghi_chu text [note: 'Ghi chú thêm nếu cần']
+  ngay_tao timestamp [default: `now()`, not null]
+}
+
+Enum LoaiNguoiThucHien {
+  NHAN_VIEN
+  NGUOI_DUNG
+  HE_THONG
+}
+
+Table DanhSachYeuThich {
+  Note: '''
+  ### Bảng Danh Sách Yêu Thích
+  - **Mục đích**: Ghi lại các sản phẩm mà người dùng quan tâm. Tín hiệu tốt cho việc cá nhân hóa và marketing.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Danh sách `id_san_pham` theo `id_nguoi_dung`.
+  - **Thời gian**: Cache trong phiên làm việc của người dùng.
+  - **Invalidate**: Khi người dùng thêm/bớt sản phẩm khỏi danh sách.
+  '''
+  id_nguoi_dung int [not null, note: 'Khóa ngoại đến người dùng']
+  id_san_pham int [not null, note: 'Khóa ngoại đến sản phẩm được yêu thích']
+  ngay_them timestamp [default: `now()`, not null, note: 'Thời điểm sản phẩm được thêm vào danh sách']
+indexes { (id_nguoi_dung, id_san_pham) [pk] }
+
+}
+
+Table LichSuXemSanPham {
+  Note: '''
+  ### Bảng Lịch Sử Xem Sản Phẩm
+  - **Mục đích**: Ghi lại hành vi duyệt sản phẩm của người dùng. Nguồn dữ liệu quan trọng cho các thuật toán gợi ý.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE** trực tiếp. Dữ liệu này thường được xử lý bất đồng bộ và đẩy vào các hệ thống gợi ý hoặc cache riêng.
+  '''
+  id bigserial [pk]
+  id_nguoi_dung int [note: 'Người dùng đã xem sản phẩm. Null nếu là khách vãng lai.']
+  id_san_pham int [not null, note: 'Sản phẩm đã được xem']
+  session_id varchar(255) [note: 'Dùng để nhóm các lượt xem của khách vãng lai trong một phiên làm việc']
+  ngay_xem timestamp [default: `now()`, not null]
+}
+
+// == BẢNG MỞ RỘNG: BÁO CÁO TỔNG HỢP ==
+Table BaoCaoDoanhThuTheoNgay {
+  Note: '''
+  ### Bảng Báo Cáo Doanh Thu Theo Ngày
+  - **Mục đích**: Bảng tổng hợp (materialized view/summary table) được tính toán trước để phục vụ các truy vấn báo cáo nhanh chóng mà không cần quét qua bảng `HoaDon` khổng lồ.
+  - **Thiết kế**: Dữ liệu được tạo ra bởi một job chạy hàng đêm.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Dữ liệu báo cáo theo ngày/tháng/năm.
+  - **Thời gian**: Cache dài hạn (vài giờ).
+  - **Invalidate**: Sau khi job tính toán lại báo cáo chạy xong.
+  '''
+  ngay_bao_cao date [not null]
+  id_cua_hang int [note: 'Null nếu là báo cáo tổng hợp toàn hệ thống']
+  tong_doanh_thu decimal(18, 2) [not null]
+  so_don_hang int [not null]
+  so_san_pham_ban_ra int [not null]
+  khach_hang_moi int [not null]
+indexes { (ngay_bao_cao, id_cua_hang) [pk] }
+
+}
+
+// =============================================
+// == NHÓM 7: NỘI DUNG & GIAO TIẾP
+// =============================================
+
+Table BaiViet {
+  Note: '''
+  ### Bảng Bài Viết (Blog/Tin tức)
+  - **Mục đích**: Quản lý nội dung bài viết.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Các bài viết đã xuất bản.
+  - **Thời gian**: Cache dài hạn (vài giờ).
+  - **Invalidate**: Khi admin cập nhật bài viết.
+  '''
+  id int [pk, increment]
+  tieu_de varchar(255) [not null, note: 'Tiêu đề của bài viết']
+  slug varchar(255) [unique, not null, note: 'Chuỗi định danh duy nhất cho URL, tốt cho SEO']
+  noi_dung text [not null, note: 'Nội dung chi tiết của bài viết, có thể là HTML hoặc Markdown']
+  anh_dai_dien varchar(255) [note: 'URL ảnh đại diện cho bài viết']
+  id_tac_gia int [not null, note: 'Khóa ngoại đến bảng NhanVien, cho biết ai là tác giả']
+  trang_thai LoaiTrangThaiBaiViet [not null, default: 'nhap', note: 'Trạng thái của bài viết']
+  ngay_xuat_ban timestamp [note: 'Thời điểm bài viết được công khai']
+  ngay_tao timestamp [default: `now()`, not null]
+  ngay_cap_nhat timestamp [default: `now()`, not null]
+}
+
+Enum LoaiTrangThaiBaiViet {
+  nhap
+  da_xuat_ban
+  da_go
+}
+
+Table BinhLuanBaiViet {
+  Note: '''
+  ### Bảng Bình Luận Bài Viết
+  - **Mục đích**: Lưu trữ các bình luận cho bài viết, hỗ trợ bình luận đa cấp.
+
+  **Chiến lược Cache:**
+  - **Đối tượng cache**: Danh sách bình luận theo `id_bai_viet`.
+  - **Thời gian**: Cache trung hạn (15-30 phút).
+  - **Invalidate**: Khi có bình luận mới được duyệt.
+  '''
+  id int [pk, increment]
+  id_bai_viet int [not null, note: 'Bình luận này thuộc bài viết nào']
+  id_binh_luan_cha int [note: 'Khóa ngoại tự tham chiếu, cho phép bình luận đa cấp. Null nếu là bình luận gốc.']
+  noi_dung text [not null, note: 'Nội dung của bình luận']
+  id_nguoi_dung int [note: 'Nếu người bình luận là người dùng đã đăng nhập. Null nếu là khách.']
+  ten_nguoi_binh_luan varchar(255) [note: 'Tên của khách vãng lai khi bình luận']
+  email_nguoi_binh_luan varchar(255) [note: 'Email của khách vãng lai khi bình luận']
+  trang_thai LoaiTrangThaiBinhLuan [not null, default: 'cho_duyet', note: 'Trạng thái kiểm duyệt bình luận']
+  ngay_tao timestamp [default: `now()`, not null]
+}
+
+Enum LoaiTrangThaiBinhLuan {
+  cho_duyet
+  da_duyet
+  spam
+}
+
+Table LichSuEmail {
+  Note: '''
+  ### Bảng Lịch Sử Email
+  - **Mục đích**: Ghi log tất cả các email được gửi từ hệ thống.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Bảng log.
+  '''
+  id bigserial [pk]
+  email_nguoi_nhan varchar(255) [not null, note: 'Địa chỉ email của người nhận']
+  tieu_de varchar(255) [not null, note: 'Tiêu đề của email']
+  noi_dung_html text [not null, note: 'Nội dung đầy đủ của email dưới dạng HTML']
+  loai_email LoaiEmail [not null, note: 'Phân loại email để dễ dàng thống kê. VD: Xác nhận đơn hàng, Marketing...']
+  trang_thai LoaiTrangThaiGuiEmail [not null, default: 'cho_gui', note: 'Trạng thái của việc gửi email']
+  thong_bao_loi text [note: 'Lưu lại thông báo lỗi nếu gửi thất bại']
+  ngay_gui timestamp [note: 'Thời điểm email được gửi đi thành công']
+  ngay_mo timestamp [note: 'Thời điểm người dùng mở email (được cập nhật qua tracking pixel)']
+  ngay_tao timestamp [default: `now()`, not null]
+}
+
+Enum LoaiEmail {
+  XAC_NHAN_DON_HANG
+  CAP_NHAT_GIAO_HANG
+  QUEN_MAT_KHAU
+  MARKETING
+  THONG_BAO_KHAC
+}
+
+Enum LoaiTrangThaiGuiEmail {
+  cho_gui
+  dang_gui
+  da_gui
+  that_bai
+}
+
+// == BẢNG MỞ RỘNG: HỖ TRỢ KHÁCH HÀNG (TICKETING) ==
+Table YeuCauHoTro {
+  Note: '''
+  ### Bảng Yêu Cầu Hỗ Trợ (Ticket)
+  - **Mục đích**: Quản lý các khiếu nại, yêu cầu hỗ trợ từ khách hàng.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**. Dữ liệu nghiệp vụ, cần sự chính xác theo thời gian thực.
+  '''
+  id int [pk, increment]
+  ma_yeu_cau varchar(50) [unique, not null, note: 'Mã ticket để khách hàng và nhân viên theo dõi']
+  id_nguoi_dung int [not null]
+  id_hoa_don int [note: 'Ticket này liên quan đến đơn hàng nào (nếu có)']
+  tieu_de varchar(255) [not null]
+  noi_dung text [not null, note: 'Mô tả chi tiết vấn đề của khách hàng']
+  id_nhan_vien_phu_trach int [note: 'Nhân viên đang xử lý ticket này']
+  trang_thai LoaiTrangThaiTicket [not null, default: 'moi']
+  do_uu_tien LoaiDoUuTienTicket [not null, default: 'trung_binh']
+  ngay_tao timestamp [default: `now()`, not null]
+  ngay_dong timestamp [note: 'Thời điểm ticket được đóng lại']
+}
+
+Table PhanHoiYeuCau {
+  Note: '''
+  ### Bảng Phản Hồi Yêu Cầu (Ticket Reply)
+  - **Mục đích**: Lưu trữ toàn bộ lịch sử trao đổi trong một ticket.
+
+  **Chiến lược Cache:**
+  - **KHÔNG CACHE**.
+  '''
+  id bigserial [pk]
+  id_yeu_cau_ho_tro int [not null]
+  id_nguoi_phan_hoi int [not null, note: 'ID của người phản hồi (có thể là NguoiDung hoặc NhanVien)']
+  loai_nguoi_phan_hoi LoaiNguoiThucHien [not null]
+  noi_dung text [not null]
+  ngay_tao timestamp [default: `now()`, not null]
+}
+
+Enum LoaiTrangThaiTicket {
+  moi
+  dang_xu_ly
+  cho_phan_hoi
+  da_dong
+}
+
+Enum LoaiDoUuTienTicket {
+  thap
+  trung_binh
+  cao
+  khan_cap
+}
+
+// =============================================
+// == ĐỊNH NGHĨA CÁC MỐI QUAN HỆ (FOREIGN KEYS)
+// =============================================
+
+// -- Nhóm 1
+Ref: ThongTinNguoiDung.id_nguoi_dung > NguoiDung.id [delete: cascade]
+Ref: ThongTinNguoiDung.id_hang_thanh_vien > HangThanhVien.id [delete: set null]
+Ref: ThongTinNguoiDung.id_cong_ty > CongTy.id [delete: set null]
+Ref: DiaChiNguoiDung.id_nguoi_dung > NguoiDung.id [delete: cascade]
+Ref: NhanVien.id_cua_hang > CuaHang.id [delete: set null]
+Ref: VaiTroNhanVien.id_nhan_vien > NhanVien.id [delete: cascade]
+Ref: VaiTroNhanVien.id_vai_tro > VaiTro.id [delete: cascade]
+Ref: QuyenVaiTro.id_vai_tro > VaiTro.id [delete: cascade]
+Ref: QuyenVaiTro.id_quyen > Quyen.id [delete: cascade]
+Ref: LichSuDiemTichLuy.id_nguoi_dung > NguoiDung.id [delete: cascade]
+Ref: LichSuDiemTichLuy.id_hoa_don > HoaDon.id [delete: set null]
+Ref: NhomKhachHang_NguoiDung.id_nhom_khach_hang > NhomKhachHang.id [delete: cascade]
+Ref: NhomKhachHang_NguoiDung.id_nguoi_dung > NguoiDung.id [delete: cascade]
+
+// -- Nhóm 2
+Ref: BienTheSanPham.id_san_pham > SanPham.id [delete: cascade]
+Ref: GiaTriThuocTinh.id_thuoc_tinh > ThuocTinh.id [delete: cascade]
+Ref: BienThe_GiaTriThuocTinh.id_bien_the > BienTheSanPham.id [delete: cascade]
+Ref: BienThe_GiaTriThuocTinh.id_gia_tri_thuoc_tinh > GiaTriThuocTinh.id [delete: cascade]
+Ref: HinhAnh.id_san_pham > SanPham.id [delete: cascade]
+Ref: HinhAnh.id_bien_the > BienTheSanPham.id [delete: set null]
+Ref: TagSanPham.id_san_pham > SanPham.id [delete: cascade]
+Ref: TagSanPham.id_tag > Tag.id [delete: cascade]
+Ref: DanhGiaSanPham.id_hoa_don > HoaDon.id [delete: cascade]
+Ref: DanhGiaSanPham.id_san_pham > SanPham.id [delete: cascade]
+Ref: DanhGiaSanPham.id_nguoi_dung > NguoiDung.id [delete: cascade]
+
+// -- Nhóm 3
+Ref: TonKho.id_bien_the > BienTheSanPham.id [delete: cascade]
+Ref: TonKho.id_cua_hang > CuaHang.id [delete: cascade]
+Ref: PhieuNhapKho.id_nha_cung_cap > NhaCungCap.id [delete: no action]
+Ref: PhieuNhapKho.id_nhan_vien_tao > NhanVien.id [delete: no action]
+Ref: PhieuNhapKho.id_cua_hang_nhap > CuaHang.id [delete: no action]
+Ref: ChiTietPhieuNhap.id_phieu_nhap > PhieuNhapKho.id [delete: cascade]
+Ref: ChiTietPhieuNhap.id_bien_the > BienTheSanPham.id [delete: no action]
+
+// -- Nhóm 4
+Ref: GioHang.id_nguoi_dung > NguoiDung.id [delete: cascade]
+Ref: GioHang.id_bien_the > BienTheSanPham.id [delete: cascade]
+Ref: HoaDon.id_nguoi_dung > NguoiDung.id [delete: set null]
+Ref: HoaDon.id_nhan_vien > NhanVien.id [delete: set null]
+Ref: HoaDon.id_cua_hang > CuaHang.id [delete: set null]
+Ref: HoaDon.id_voucher > Voucher.id [delete: set null]
+Ref: ChiTietHoaDon.id_hoa_don > HoaDon.id [delete: cascade]
+Ref: ChiTietHoaDon.id_bien_the > BienTheSanPham.id [delete: set null]
+Ref: GoiGiaoHang.id_hoa_don > HoaDon.id [delete: cascade]
+Ref: ChiTietGoiGiaoHang.id_goi_giao_hang > GoiGiaoHang.id [delete: cascade]
+Ref: ChiTietGoiGiaoHang.id_chi_tiet_hoa_don > ChiTietHoaDon.id [delete: cascade]
+Ref: DonTraHang.id_hoa_don_goc > HoaDon.id [delete: no action]
+Ref: DonTraHang.id_nhan_vien_xu_ly > NhanVien.id [delete: no action]
+Ref: ChiTietDonTraHang.id_don_tra_hang > DonTraHang.id [delete: cascade]
+Ref: ChiTietDonTraHang.id_chi_tiet_hoa_don > ChiTietHoaDon.id [delete: no action]
+Ref: LichSuGiaoDichThanhToan.id_hoa_don > HoaDon.id [delete: cascade]
+Ref: GiaoDichHoanTien.id_don_tra_hang > DonTraHang.id [delete: cascade]
+
+// -- Nhóm 5
+Ref: HoaDon.id_trang_thai_don_hang > TrangThaiDonHang.id
+Ref: HoaDon.id_phuong_thuc_thanh_toan > PhuongThucThanhToan.id
+Ref: HoaDon.id_trang_thai_thanh_toan > TrangThaiThanhToan.id
+
+// -- Nhóm 6
+Ref: DanhSachYeuThich.id_nguoi_dung > NguoiDung.id [delete: cascade]
+Ref: DanhSachYeuThich.id_san_pham > SanPham.id [delete: cascade]
+Ref: LichSuXemSanPham.id_nguoi_dung > NguoiDung.id [delete: cascade]
+Ref: LichSuXemSanPham.id_san_pham > SanPham.id [delete: cascade]
+Ref: BaoCaoDoanhThuTheoNgay.id_cua_hang > CuaHang.id [delete: cascade]
+
+// -- Nhóm 7
+Ref: BaiViet.id_tac_gia > NhanVien.id [delete: set null]
+Ref: BinhLuanBaiViet.id_bai_viet > BaiViet.id [delete: cascade]
+Ref: BinhLuanBaiViet.id_binh_luan_cha > BinhLuanBaiViet.id [delete: cascade]
+Ref: BinhLuanBaiViet.id_nguoi_dung > NguoiDung.id [delete: cascade]
+Ref: YeuCauHoTro.id_nguoi_dung > NguoiDung.id [delete: cascade]
+Ref: YeuCauHoTro.id_hoa_don > HoaDon.id [delete: set null]
+Ref: YeuCauHoTro.id_nhan_vien_phu_trach > NhanVien.id [delete: set null]
+Ref: PhanHoiYeuCau.id_yeu_cau_ho_tro > YeuCauHoTro.id [delete: cascade]
