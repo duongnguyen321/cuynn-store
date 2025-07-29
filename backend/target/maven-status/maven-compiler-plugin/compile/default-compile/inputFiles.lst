@@ -4,6 +4,7 @@
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/controller/AdminController.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/service/CategoryService.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/controller/ReviewController.java
+/Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/repository/VoucherRepository.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/repository/OrderRepository.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/dto/LoyaltyPointsResponse.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/dto/ReportReviewRequest.java
@@ -116,6 +117,7 @@
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/ZmenBackendApplication.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/service/ProductReviewService.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/dto/ProvinceResponse.java
+/Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/repository/BlogPostRepository.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/entity/Tag.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/entity/Permission.java
 /Users/duonguyen/Projects/cuynn-store/backend/src/main/java/com/zmen/backend/dto/CreateProductRequest.java

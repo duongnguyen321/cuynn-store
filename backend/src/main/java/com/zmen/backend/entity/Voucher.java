@@ -50,6 +50,12 @@ public class Voucher {
     @Column(name = "trang_thai", nullable = false)
     private ActivityStatus status = ActivityStatus.hoat_dong;
     
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
     public enum DiscountType {
         phan_tram, so_tien
     }
@@ -59,9 +65,13 @@ public class Voucher {
     }
     
     // Constructors
-    public Voucher() {}
+    public Voucher() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
     
     public Voucher(String voucherCode, String title, DiscountType discountType, BigDecimal discountValue) {
+        this();
         this.voucherCode = voucherCode;
         this.title = title;
         this.discountType = discountType;
@@ -107,6 +117,12 @@ public class Voucher {
     
     public ActivityStatus getStatus() { return status; }
     public void setStatus(ActivityStatus status) { this.status = status; }
+    
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     
     // Utility methods
     public boolean isValid() {

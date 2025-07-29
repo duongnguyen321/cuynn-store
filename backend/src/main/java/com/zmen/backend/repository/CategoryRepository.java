@@ -29,4 +29,9 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     boolean existsBySlug(String slug);
     
     boolean existsByCategoryName(String categoryName);
+    
+    List<Category> findByStatus(Category.CategoryStatus status);
+    
+    @Query("SELECT c FROM Category c WHERE c.categoryName LIKE %:name% ORDER BY c.displayOrder ASC")
+    org.springframework.data.domain.Page<Category> findByNameContainingIgnoreCase(@Param("name") String name, org.springframework.data.domain.Pageable pageable);
 }

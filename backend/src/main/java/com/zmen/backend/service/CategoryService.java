@@ -25,28 +25,50 @@ public class CategoryService {
     private UserService userService;
     
     public List<CategoryResponse> getAllCategories(Boolean includeInactive, Boolean includeProductCount) {
-        // Implementation for getting all categories
-        throw new RuntimeException("CategoryService.getAllCategories not implemented yet");
+        List<Category> categories;
+        if (includeInactive != null && includeInactive) {
+            categories = categoryRepository.findAll();
+        } else {
+            categories = categoryRepository.findByStatus(Category.CategoryStatus.dang_hoat_dong);
+        }
+        
+        return categories.stream()
+                .map(this::convertToCategoryResponse)
+                .collect(java.util.stream.Collectors.toList());
     }
     
     public List<CategoryTreeResponse> getCategoryTree(Boolean includeInactive) {
-        // Implementation for getting category tree
-        throw new RuntimeException("CategoryService.getCategoryTree not implemented yet");
+        List<Category> rootCategories = categoryRepository.findByParentCategoryIsNullOrderByDisplayOrderAsc();
+        return rootCategories.stream()
+                .map(this::convertToCategoryTreeResponse)
+                .collect(java.util.stream.Collectors.toList());
     }
     
     public Page<CategoryResponse> getCategoriesPaginated(String search, Boolean active, Pageable pageable) {
-        // Implementation for getting categories with pagination
-        throw new RuntimeException("CategoryService.getCategoriesPaginated not implemented yet");
+        Page<Category> categoryPage;
+        if (search != null && !search.trim().isEmpty()) {
+            categoryPage = categoryRepository.findByNameContainingIgnoreCase(search, pageable);
+        } else {
+            categoryPage = categoryRepository.findAll(pageable);
+        }
+        
+        List<CategoryResponse> categoryResponses = categoryPage.getContent().stream()
+                .map(this::convertToCategoryResponse)
+                .collect(java.util.stream.Collectors.toList());
+        
+        return new org.springframework.data.domain.PageImpl<>(categoryResponses, pageable, categoryPage.getTotalElements());
     }
     
     public CategoryDetailResponse getCategoryById(Long id) {
-        // Implementation for getting category by ID
-        throw new RuntimeException("CategoryService.getCategoryById not implemented yet");
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+        return convertToCategoryDetailResponse(category);
     }
     
     public CategoryDetailResponse getCategoryBySlug(String slug) {
-        // Implementation for getting category by slug
-        throw new RuntimeException("CategoryService.getCategoryBySlug not implemented yet");
+        Category category = categoryRepository.findBySlug(slug)
+                .orElseThrow(() -> new RuntimeException("Category not found with slug: " + slug));
+        return convertToCategoryDetailResponse(category);
     }
     
     public List<CategoryResponse> getChildCategories(Long id, Boolean includeInactive) {
@@ -95,7 +117,73 @@ public class CategoryService {
     }
     
     public CategoryStatisticsResponse getCategoryStatistics(Long id) {
-        // Implementation for getting category statistics
-        throw new RuntimeException("CategoryService.getCategoryStatistics not implemented yet");
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+        
+        CategoryStatisticsResponse response = new CategoryStatisticsResponse();
+        response.setCategoryId(id);
+        response.setCategoryName(category.getCategoryName());
+        response.setTotalProducts(0); // Would count from products
+        // response.setTotalSales(0); // Field not available in DTO
+        response.setTotalRevenue(java.math.BigDecimal.ZERO);
+        return response;
+    }
+    
+    private CategoryResponse convertToCategoryResponse(Category category) {
+        CategoryResponse response = new CategoryResponse();
+        response.setId(category.getId());
+        response.setName(category.getCategoryName());
+        response.setSlug(category.getSlug());
+        response.setDescription(category.getDescription());
+        // response.setImageUrl(category.getImage()); // Field not available in DTO
+        // response.setIcon(category.getIcon()); // Field not available in DTO
+        // response.setDisplayOrder(category.getDisplayOrder()); // Field not available in DTO
+        response.setIsActive(category.getStatus() == Category.CategoryStatus.dang_hoat_dong);
+        response.setProductCount(0); // Would count from products
+        response.setCreatedAt(category.getCreatedAt());
+        response.setUpdatedAt(category.getUpdatedAt());
+        return response;
+    }
+    
+    private CategoryDetailResponse convertToCategoryDetailResponse(Category category) {
+        CategoryDetailResponse response = new CategoryDetailResponse();
+        response.setId(category.getId());
+        response.setName(category.getCategoryName());
+        response.setSlug(category.getSlug());
+        response.setDescription(category.getDescription());
+        // response.setImageUrl(category.getImage()); // Field not available in DTO
+        // response.setIcon(category.getIcon()); // Field not available in DTO
+        // response.setDisplayOrder(category.getDisplayOrder()); // Field not available in DTO
+        response.setIsActive(category.getStatus() == Category.CategoryStatus.dang_hoat_dong);
+        response.setProductCount(0); // Would count from products
+        response.setCreatedAt(category.getCreatedAt());
+        response.setUpdatedAt(category.getUpdatedAt());
+        
+        if (category.getParentCategory() != null) {
+            response.setParentId(category.getParentCategory().getId());
+            response.setParentName(category.getParentCategory().getCategoryName());
+        }
+        
+        return response;
+    }
+    
+    private CategoryTreeResponse convertToCategoryTreeResponse(Category category) {
+        CategoryTreeResponse response = new CategoryTreeResponse();
+        response.setId(category.getId());
+        response.setName(category.getCategoryName());
+        response.setSlug(category.getSlug());
+        // response.setImageUrl(category.getImage()); // Field not available in DTO
+        // response.setIcon(category.getIcon()); // Field not available in DTO
+        // response.setDisplayOrder(category.getDisplayOrder()); // Field not available in DTO
+        response.setIsActive(category.getStatus() == Category.CategoryStatus.dang_hoat_dong);
+        
+        if (category.getSubCategories() != null && !category.getSubCategories().isEmpty()) {
+            List<CategoryTreeResponse> children = category.getSubCategories().stream()
+                    .map(this::convertToCategoryTreeResponse)
+                    .collect(java.util.stream.Collectors.toList());
+            response.setChildren(children);
+        }
+        
+        return response;
     }
 }

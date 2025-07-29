@@ -1,13 +1,18 @@
 package com.zmen.backend.controller;
 
+import com.zmen.backend.dto.*;
+import com.zmen.backend.service.BrandService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.Arrays;
 
 @RestController
@@ -16,93 +21,45 @@ import java.util.Arrays;
 @CrossOrigin(origins = "*")
 public class BrandController {
 
+    @Autowired
+    private BrandService brandService;
+
     @GetMapping
     @Operation(summary = "Lấy danh sách thương hiệu", description = "Lấy tất cả thương hiệu với phân trang và bộ lọc")
-    public ResponseEntity<Map<String, Object>> getAllBrands(
+    public ResponseEntity<Page<BrandResponse>> getAllBrands(
             Pageable pageable,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String sortBy) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", Arrays.asList(
-            Map.of(
-                "id", 1L,
-                "tenThuongHieu", "Nike",
-                "slug", "nike",
-                "logo", "/images/brands/nike-logo.png",
-                "moTa", "Thương hiệu thể thao hàng đầu thế giới",
-                "trangThai", "ACTIVE",
-                "soSanPham", 125,
-                "quocGia", "USA",
-                "website", "https://nike.com",
-                "namThanhLap", 1964
-            ),
-            Map.of(
-                "id", 2L,
-                "tenThuongHieu", "Adidas", 
-                "slug", "adidas",
-                "logo", "/images/brands/adidas-logo.png",
-                "moTa", "Thương hiệu thể thao Đức nổi tiếng",
-                "trangThai", "ACTIVE",
-                "soSanPham", 98,
-                "quocGia", "Germany",
-                "website", "https://adidas.com",
-                "namThanhLap", 1949
-            )
-        ));
-        response.put("totalElements", 45);
-        response.put("totalPages", 5);
-        return ResponseEntity.ok(response);
+        Page<BrandResponse> brands = brandService.getBrandsPaginated(search, true, pageable);
+        return ResponseEntity.ok(brands);
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Lấy chi tiết thương hiệu", description = "Lấy thông tin chi tiết của một thương hiệu")
-    public ResponseEntity<Map<String, Object>> getBrandById(@PathVariable Long id) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", id);
-        response.put("tenThuongHieu", "Nike");
-        response.put("slug", "nike");
-        response.put("logo", "/images/brands/nike-logo.png");
-        response.put("banner", "/images/brands/nike-banner.jpg");
-        response.put("moTa", "Nike là thương hiệu thể thao hàng đầu thế giới, được thành lập năm 1964");
-        response.put("moTaChiTiet", "Nike Inc. là một tập đoàn đa quốc gia của Mỹ...");
-        response.put("trangThai", "ACTIVE");
-        response.put("quocGia", "USA");
-        response.put("website", "https://nike.com");
-        response.put("namThanhLap", 1964);
-        response.put("soSanPham", 125);
-        response.put("seoTitle", "Nike - Thương hiệu thể thao hàng đầu");
-        response.put("seoDescription", "Khám phá bộ sưu tập Nike tại ZMEN Store");
-        response.put("tongDanhSo", 15500000);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<BrandDetailResponse> getBrandById(@PathVariable Long id) {
+        BrandDetailResponse brand = brandService.getBrandById(id);
+        return ResponseEntity.ok(brand);
     }
 
     @PostMapping
     @Operation(summary = "Tạo thương hiệu mới", description = "Thêm thương hiệu mới vào hệ thống")
-    public ResponseEntity<Map<String, Object>> createBrand(@RequestBody Map<String, Object> request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Tạo thương hiệu thành công");
-        response.put("id", 10L);
-        response.put("tenThuongHieu", request.get("tenThuongHieu"));
-        response.put("slug", request.get("slug"));
-        response.put("trangThai", "ACTIVE");
-        return ResponseEntity.ok(response);
+    public ResponseEntity<BrandResponse> createBrand(@RequestBody CreateBrandRequest request) {
+        BrandResponse brand = brandService.createBrand(request, "system");
+        return ResponseEntity.ok(brand);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thương hiệu", description = "Cập nhật thông tin thương hiệu")
-    public ResponseEntity<Map<String, Object>> updateBrand(@PathVariable Long id, @RequestBody Map<String, Object> request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Cập nhật thương hiệu thành công");
-        response.put("id", id);
-        response.put("tenThuongHieu", request.get("tenThuongHieu"));
-        response.put("slug", request.get("slug"));
-        return ResponseEntity.ok(response);
+    public ResponseEntity<BrandResponse> updateBrand(@PathVariable Long id, @RequestBody UpdateBrandRequest request) {
+        BrandResponse brand = brandService.updateBrand(id, request, "system");
+        return ResponseEntity.ok(brand);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa thương hiệu", description = "Xóa thương hiệu (soft delete)")
     public ResponseEntity<Map<String, Object>> deleteBrand(@PathVariable Long id) {
+        brandService.deleteBrand(id, "system");
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Xóa thương hiệu thành công");
         response.put("id", id);
@@ -111,12 +68,9 @@ public class BrandController {
 
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái", description = "Kích hoạt/vô hiệu hóa thương hiệu")
-    public ResponseEntity<Map<String, Object>> updateBrandStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Cập nhật trạng thái thành công");
-        response.put("id", id);
-        response.put("trangThai", request.get("trangThai"));
-        return ResponseEntity.ok(response);
+    public ResponseEntity<BrandResponse> updateBrandStatus(@PathVariable Long id, @RequestBody UpdateBrandStatusRequest request) {
+        BrandResponse brand = brandService.updateBrandStatus(id, request, "system");
+        return ResponseEntity.ok(brand);
     }
 
     @GetMapping("/{id}/products")
@@ -141,43 +95,16 @@ public class BrandController {
 
     @GetMapping("/popular")
     @Operation(summary = "Thương hiệu phổ biến", description = "Lấy danh sách thương hiệu bán chạy nhất")
-    public ResponseEntity<Map<String, Object>> getPopularBrands(@RequestParam(defaultValue = "10") int limit) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("brands", Arrays.asList(
-            Map.of("id", 1L, "tenThuongHieu", "Nike", "soLuotMua", 1250, "doanhThu", 125000000),
-            Map.of("id", 2L, "tenThuongHieu", "Adidas", "soLuotMua", 980, "doanhThu", 98000000),
-            Map.of("id", 3L, "tenThuongHieu", "Puma", "soLuotMua", 650, "doanhThu", 65000000)
-        ));
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<BrandResponse>> getPopularBrands(@RequestParam(defaultValue = "10") int limit) {
+        List<BrandResponse> brands = brandService.getPopularBrands(limit);
+        return ResponseEntity.ok(brands);
     }
 
     @GetMapping("/statistics")
     @Operation(summary = "Thống kê thương hiệu", description = "Thống kê sản phẩm và doanh số theo thương hiệu")
-    public ResponseEntity<Map<String, Object>> getBrandStatistics() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("statistics", Arrays.asList(
-            Map.of(
-                "brandId", 1L,
-                "tenThuongHieu", "Nike",
-                "soSanPham", 125,
-                "soSanPhamBan", 1250,
-                "doanhThu", 125000000,
-                "trangThai", "ACTIVE",
-                "tileChuyenDoi", 12.5
-            ),
-            Map.of(
-                "brandId", 2L,
-                "tenThuongHieu", "Adidas",
-                "soSanPham", 98,
-                "soSanPhamBan", 980,
-                "doanhThu", 98000000,
-                "trangThai", "ACTIVE",
-                "tileChuyenDoi", 10.8
-            )
-        ));
-        response.put("tongDoanhThu", 223000000);
-        response.put("tongSanPham", 223);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<BrandResponse>> getBrandStatistics() {
+        List<BrandResponse> brands = brandService.getAllBrands(true, true);
+        return ResponseEntity.ok(brands);
     }
 
     @PostMapping("/{id}/upload-logo")
@@ -202,15 +129,9 @@ public class BrandController {
 
     @GetMapping("/search")
     @Operation(summary = "Tìm kiếm thương hiệu", description = "Tìm kiếm thương hiệu theo tên")
-    public ResponseEntity<Map<String, Object>> searchBrands(@RequestParam String q) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("results", Arrays.asList(
-            Map.of("id", 1L, "tenThuongHieu", "Nike", "slug", "nike", "soSanPham", 125),
-            Map.of("id", 2L, "tenThuongHieu", "Adidas", "slug", "adidas", "soSanPham", 98)
-        ));
-        response.put("query", q);
-        response.put("total", 2);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<Page<BrandResponse>> searchBrands(@RequestParam String q, Pageable pageable) {
+        Page<BrandResponse> brands = brandService.searchBrands(q, pageable);
+        return ResponseEntity.ok(brands);
     }
 
     @GetMapping("/{id}/reviews")

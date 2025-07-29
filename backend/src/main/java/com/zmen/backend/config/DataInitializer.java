@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
-@Component
+// @Component - Temporarily disabled to avoid schema issues
 public class DataInitializer implements CommandLineRunner {
 
     @Autowired

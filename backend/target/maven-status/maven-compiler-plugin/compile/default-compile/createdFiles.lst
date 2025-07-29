@@ -86,6 +86,7 @@ com/zmen/backend/entity/CustomerGroup.class
 com/zmen/backend/entity/Promotion$PromotionType.class
 com/zmen/backend/entity/PaymentStatus.class
 com/zmen/backend/entity/Company$CompanyStatus.class
+com/zmen/backend/repository/VoucherRepository.class
 com/zmen/backend/dto/CreateVoucherRequest.class
 com/zmen/backend/dto/UpdateAddressRequest.class
 com/zmen/backend/dto/UpdateProductStatusRequest.class
@@ -114,7 +115,6 @@ com/zmen/backend/dto/UploadAvatarRequest.class
 com/zmen/backend/entity/User.class
 com/zmen/backend/service/VoucherService.class
 com/zmen/backend/entity/StockReceiptDetail.class
-com/zmen/backend/service/ProductService.class
 com/zmen/backend/entity/ActivityLog$PerformerType.class
 com/zmen/backend/entity/Employee.class
 com/zmen/backend/entity/Order$PaymentStatus.class
@@ -150,7 +150,6 @@ com/zmen/backend/repository/OrderRepository.class
 com/zmen/backend/dto/VoucherValidationResponse.class
 com/zmen/backend/dto/PaymentTransactionResponse.class
 com/zmen/backend/dto/ProductStatisticsResponse.class
-com/zmen/backend/service/CategoryService.class
 com/zmen/backend/entity/DeliveryPackage.class
 com/zmen/backend/dto/ProductVariantResponse.class
 com/zmen/backend/dto/ProductSearchRequest.class
@@ -173,6 +172,7 @@ com/zmen/backend/dto/UpdateVoucherStatusRequest.class
 com/zmen/backend/entity/Employee$EmployeeStatus.class
 com/zmen/backend/dto/UpdateBrandRequest.class
 com/zmen/backend/repository/CartRepository.class
+com/zmen/backend/repository/BlogPostRepository.class
 com/zmen/backend/entity/OrderStatus.class
 com/zmen/backend/entity/ReviewImage.class
 com/zmen/backend/dto/RefreshTokenRequest.class
@@ -230,7 +230,6 @@ com/zmen/backend/entity/Role$RoleStatus.class
 com/zmen/backend/entity/Supplier$CooperationStatus.class
 com/zmen/backend/entity/ProductAttribute.class
 com/zmen/backend/entity/Product$ProductStatus.class
-com/zmen/backend/repository/CategoryRepository.class
 com/zmen/backend/dto/AddressResponse.class
 com/zmen/backend/entity/Order.class
 com/zmen/backend/dto/WishlistItemResponse.class

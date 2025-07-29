@@ -13,7 +13,11 @@
       "Bash(curl:*)",
       "Bash(pkill:*)",
       "Bash(/dev/null)",
-      "mcp__serena__replace_regex"
+      "mcp__serena__replace_regex",
+      "Bash(kill:*)",
+      "Bash(true)",
+      "Bash(grep:*)",
+      "Bash(sqlite3:*)"
     ],
     "deny": []
   }
