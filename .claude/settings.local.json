@@ -8,7 +8,8 @@
       "mcp__serena__write_memory",
       "Bash(pnpm install:*)",
       "Bash(kill:*)",
-      "mcp__serena__find_symbol"
+      "mcp__serena__find_symbol",
+      "mcp__serena__get_symbols_overview"
     ],
     "deny": []
   }

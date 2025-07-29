@@ -1,7 +1,12 @@
 package com.zmen.backend.entity;
 
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 
 @Entity
 @Table(name = "users")
@@ -30,6 +35,9 @@ public class User {
     private Role role = Role.CUSTOMER;
     
     private boolean enabled = true;
+    
+    @Column(name = "email_verified")
+    private boolean emailVerified = false;
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -92,5 +100,12 @@ public class User {
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+    
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
 }
 
