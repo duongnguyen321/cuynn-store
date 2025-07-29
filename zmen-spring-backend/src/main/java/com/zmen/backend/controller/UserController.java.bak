@@ -1,0 +1,219 @@
+package com.zmen.backend.controller;
+
+import com.zmen.backend.entity.User;
+import com.zmen.backend.entity.ThongTinNguoiDung;
+import com.zmen.backend.repository.UserRepository;
+import com.zmen.backend.repository.ThongTinNguoiDungRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/user")
+@Tag(name = "User Management", description = "APIs for user profile management")
+@CrossOrigin(origins = "*")
+public class UserController {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ThongTinNguoiDungRepository thongTinNguoiDungRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Operation(summary = "Get user profile", description = "Get current user's profile information")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Profile retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    @GetMapping("/profile")
+    public ResponseEntity<?> getUserProfile() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String username = auth.getName();
+            
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (!userOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            User user = userOpt.get();
+            Optional<ThongTinNguoiDung> profileOpt = thongTinNguoiDungRepository.findByNguoiDung(user);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", user.getId());
+            response.put("username", user.getUsername());
+            response.put("email", user.getEmail());
+            response.put("fullName", user.getFullName());
+            response.put("phoneNumber", user.getPhoneNumber());
+            response.put("role", user.getRole());
+            response.put("enabled", user.isEnabled());
+            response.put("createdAt", user.getCreatedAt());
+            
+            if (profileOpt.isPresent()) {
+                ThongTinNguoiDung profile = profileOpt.get();
+                response.put("profile", Map.of(
+                    "hoTen", profile.getHoTen(),
+                    "gioiTinh", profile.getGioiTinh(),
+                    "ngaySinh", profile.getNgaySinh(),
+                    "soDienThoai", profile.getSoDienThoai(),
+                    "email", profile.getEmail(),
+                    "avatar", profile.getAvatar(),
+                    "ngheNghiep", profile.getNgheNghiep(),
+                    "thuNhapHangThang", profile.getThuNhapHangThang()
+                ));
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to get profile: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Update user profile", description = "Update current user's profile information")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Profile updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateUserProfile(@RequestBody Map<String, Object> profileData) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String username = auth.getName();
+            
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (!userOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            User user = userOpt.get();
+            
+            // Update user basic info
+            if (profileData.containsKey("fullName")) {
+                user.setFullName((String) profileData.get("fullName"));
+            }
+            if (profileData.containsKey("phoneNumber")) {
+                user.setPhoneNumber((String) profileData.get("phoneNumber"));
+            }
+            userRepository.save(user);
+            
+            // Update or create profile
+            ThongTinNguoiDung profile = thongTinNguoiDungRepository.findByNguoiDung(user)
+                .orElse(new ThongTinNguoiDung(user, user.getFullName(), user.getEmail(), user.getPhoneNumber()));
+            
+            if (profileData.containsKey("hoTen")) {
+                profile.setHoTen((String) profileData.get("hoTen"));
+            }
+            if (profileData.containsKey("gioiTinh")) {
+                profile.setGioiTinh((String) profileData.get("gioiTinh"));
+            }
+            if (profileData.containsKey("ngaySinh")) {
+                profile.setNgaySinh(LocalDate.parse((String) profileData.get("ngaySinh")));
+            }
+            if (profileData.containsKey("soDienThoai")) {
+                profile.setSoDienThoai((String) profileData.get("soDienThoai"));
+            }
+            if (profileData.containsKey("ngheNghiep")) {
+                profile.setNgheNghiep((String) profileData.get("ngheNghiep"));
+            }
+            if (profileData.containsKey("thuNhapHangThang")) {
+                profile.setThuNhapHangThang(((Number) profileData.get("thuNhapHangThang")).longValue());
+            }
+            
+            thongTinNguoiDungRepository.save(profile);
+            
+            return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to update profile: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Change password", description = "Change current user's password")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Password changed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid current password"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @PutMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> passwordData) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String username = auth.getName();
+            
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (!userOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            User user = userOpt.get();
+            String currentPassword = passwordData.get("currentPassword");
+            String newPassword = passwordData.get("newPassword");
+            
+            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Current password is incorrect"));
+            }
+            
+            if (newPassword == null || newPassword.length() < 6) {
+                return ResponseEntity.badRequest().body(Map.of("error", "New password must be at least 6 characters"));
+            }
+            
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+            
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to change password: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Get user statistics", description = "Get current user's order and activity statistics")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Statistics retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @GetMapping("/stats")
+    public ResponseEntity<?> getUserStats() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String username = auth.getName();
+            
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (!userOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            User user = userOpt.get();
+            
+            // TODO: Implement actual statistics from orders, cart, etc.
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalOrders", 0);
+            stats.put("completedOrders", 0);
+            stats.put("totalSpent", 0);
+            stats.put("loyaltyPoints", 0);
+            stats.put("cartItems", 0);
+            stats.put("wishlistItems", 0);
+            
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to get statistics: " + e.getMessage()));
+        }
+    }
+}
+

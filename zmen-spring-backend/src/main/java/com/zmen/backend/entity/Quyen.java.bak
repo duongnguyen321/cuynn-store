@@ -1,0 +1,121 @@
+package com.zmen.backend.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.Set;
+
+@Entity
+@Table(name = "quyen")
+public class Quyen {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = "ten_quyen", length = 50, unique = true)
+    private String tenQuyen;
+    
+    @Column(name = "mo_ta", length = 255)
+    private String moTa;
+    
+    @Column(name = "nhom_quyen", length = 50)
+    private String nhomQuyen; // USER, PRODUCT, ORDER, ADMIN, etc.
+    
+    @Column(name = "trang_thai")
+    private Boolean trangThai = true;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @ManyToMany(mappedBy = "quyens")
+    private Set<VaiTro> vaiTros;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    // Constructors
+    public Quyen() {}
+    
+    public Quyen(String tenQuyen, String moTa, String nhomQuyen) {
+        this.tenQuyen = tenQuyen;
+        this.moTa = moTa;
+        this.nhomQuyen = nhomQuyen;
+    }
+    
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public String getTenQuyen() {
+        return tenQuyen;
+    }
+    
+    public void setTenQuyen(String tenQuyen) {
+        this.tenQuyen = tenQuyen;
+    }
+    
+    public String getMoTa() {
+        return moTa;
+    }
+    
+    public void setMoTa(String moTa) {
+        this.moTa = moTa;
+    }
+    
+    public String getNhomQuyen() {
+        return nhomQuyen;
+    }
+    
+    public void setNhomQuyen(String nhomQuyen) {
+        this.nhomQuyen = nhomQuyen;
+    }
+    
+    public Boolean getTrangThai() {
+        return trangThai;
+    }
+    
+    public void setTrangThai(Boolean trangThai) {
+        this.trangThai = trangThai;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    
+    public Set<VaiTro> getVaiTros() {
+        return vaiTros;
+    }
+    
+    public void setVaiTros(Set<VaiTro> vaiTros) {
+        this.vaiTros = vaiTros;
+    }
+}
+

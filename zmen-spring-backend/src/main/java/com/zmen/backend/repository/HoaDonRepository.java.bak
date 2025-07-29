@@ -1,0 +1,55 @@
+package com.zmen.backend.repository;
+
+import com.zmen.backend.entity.HoaDon;
+import com.zmen.backend.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface HoaDonRepository extends JpaRepository<HoaDon, Long> {
+    
+    Optional<HoaDon> findByMaHoaDon(String maHoaDon);
+    
+    Page<HoaDon> findByNguoiDungOrderByCreatedAtDesc(User nguoiDung, Pageable pageable);
+    
+    Page<HoaDon> findByNguoiDungIdOrderByCreatedAtDesc(Long nguoiDungId, Pageable pageable);
+    
+    Page<HoaDon> findByTrangThaiDonHangOrderByCreatedAtDesc(String trangThaiDonHang, Pageable pageable);
+    
+    Page<HoaDon> findByTrangThaiThanhToanOrderByCreatedAtDesc(String trangThaiThanhToan, Pageable pageable);
+    
+    Page<HoaDon> findByLoaiHoaDonOrderByCreatedAtDesc(String loaiHoaDon, Pageable pageable);
+    
+    @Query("SELECT h FROM HoaDon h WHERE h.createdAt BETWEEN :startDate AND :endDate ORDER BY h.createdAt DESC")
+    Page<HoaDon> findByDateRange(@Param("startDate") LocalDateTime startDate, 
+                                @Param("endDate") LocalDateTime endDate, 
+                                Pageable pageable);
+    
+    @Query("SELECT h FROM HoaDon h WHERE h.nguoiDung = :nguoiDung AND h.trangThaiDonHang = :trangThai ORDER BY h.createdAt DESC")
+    List<HoaDon> findByUserAndStatus(@Param("nguoiDung") User nguoiDung, @Param("trangThai") String trangThai);
+    
+    // Analytics queries
+    @Query("SELECT COUNT(h) FROM HoaDon h WHERE h.trangThaiDonHang = 'DELIVERED' AND h.createdAt BETWEEN :startDate AND :endDate")
+    long countCompletedOrdersByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+    @Query("SELECT SUM(h.tongTienThanhToan) FROM HoaDon h WHERE h.trangThaiThanhToan = 'PAID' AND h.createdAt BETWEEN :startDate AND :endDate")
+    BigDecimal sumRevenueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+    @Query("SELECT COUNT(h) FROM HoaDon h WHERE h.createdAt BETWEEN :startDate AND :endDate")
+    long countOrdersByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+    @Query("SELECT AVG(h.tongTienThanhToan) FROM HoaDon h WHERE h.trangThaiThanhToan = 'PAID' AND h.createdAt BETWEEN :startDate AND :endDate")
+    BigDecimal averageOrderValueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+    boolean existsByMaHoaDon(String maHoaDon);
+}
+

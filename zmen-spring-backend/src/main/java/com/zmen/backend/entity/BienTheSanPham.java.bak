@@ -1,0 +1,269 @@
+package com.zmen.backend.entity;
+
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Set;
+
+@Entity
+@Table(name = "bien_the_san_pham")
+public class BienTheSanPham {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne
+    @JoinColumn(name = "san_pham_id", referencedColumnName = "id")
+    private Product sanPham;
+    
+    @Column(name = "ma_bien_the", length = 50, unique = true)
+    private String maBienThe;
+    
+    @Column(name = "ten_bien_the", length = 255)
+    private String tenBienThe;
+    
+    @Column(name = "gia_ban", precision = 15, scale = 2)
+    private BigDecimal giaBan;
+    
+    @Column(name = "gia_nhap", precision = 15, scale = 2)
+    private BigDecimal giaNhap;
+    
+    @Column(name = "gia_goc", precision = 15, scale = 2)
+    private BigDecimal giaGoc;
+    
+    @Column(name = "so_luong_ton_kho")
+    private Integer soLuongTonKho = 0;
+    
+    @Column(name = "so_luong_da_ban")
+    private Integer soLuongDaBan = 0;
+    
+    @Column(name = "trong_luong", precision = 8, scale = 2)
+    private BigDecimal trongLuong;
+    
+    @Column(name = "kich_thuoc", length = 100)
+    private String kichThuoc;
+    
+    @Column(name = "mau_sac", length = 50)
+    private String mauSac;
+    
+    @Column(name = "chat_lieu", length = 100)
+    private String chatLieu;
+    
+    @Column(name = "xuat_xu", length = 100)
+    private String xuatXu;
+    
+    @Column(name = "barcode", length = 50)
+    private String barcode;
+    
+    @Column(name = "qr_code", length = 255)
+    private String qrCode;
+    
+    @Column(name = "hinh_anh_chinh", length = 255)
+    private String hinhAnhChinh;
+    
+    @Column(name = "trang_thai")
+    private String trangThai = "ACTIVE"; // ACTIVE, INACTIVE, OUT_OF_STOCK
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @OneToMany(mappedBy = "bienTheSanPham", cascade = CascadeType.ALL)
+    private Set<GiaTriThuocTinh> giaTriThuocTinhs;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    // Constructors
+    public BienTheSanPham() {}
+    
+    public BienTheSanPham(Product sanPham, String maBienThe, String tenBienThe, 
+                         BigDecimal giaBan, Integer soLuongTonKho) {
+        this.sanPham = sanPham;
+        this.maBienThe = maBienThe;
+        this.tenBienThe = tenBienThe;
+        this.giaBan = giaBan;
+        this.soLuongTonKho = soLuongTonKho;
+    }
+    
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public Product getSanPham() {
+        return sanPham;
+    }
+    
+    public void setSanPham(Product sanPham) {
+        this.sanPham = sanPham;
+    }
+    
+    public String getMaBienThe() {
+        return maBienThe;
+    }
+    
+    public void setMaBienThe(String maBienThe) {
+        this.maBienThe = maBienThe;
+    }
+    
+    public String getTenBienThe() {
+        return tenBienThe;
+    }
+    
+    public void setTenBienThe(String tenBienThe) {
+        this.tenBienThe = tenBienThe;
+    }
+    
+    public BigDecimal getGiaBan() {
+        return giaBan;
+    }
+    
+    public void setGiaBan(BigDecimal giaBan) {
+        this.giaBan = giaBan;
+    }
+    
+    public BigDecimal getGiaNhap() {
+        return giaNhap;
+    }
+    
+    public void setGiaNhap(BigDecimal giaNhap) {
+        this.giaNhap = giaNhap;
+    }
+    
+    public BigDecimal getGiaGoc() {
+        return giaGoc;
+    }
+    
+    public void setGiaGoc(BigDecimal giaGoc) {
+        this.giaGoc = giaGoc;
+    }
+    
+    public Integer getSoLuongTonKho() {
+        return soLuongTonKho;
+    }
+    
+    public void setSoLuongTonKho(Integer soLuongTonKho) {
+        this.soLuongTonKho = soLuongTonKho;
+    }
+    
+    public Integer getSoLuongDaBan() {
+        return soLuongDaBan;
+    }
+    
+    public void setSoLuongDaBan(Integer soLuongDaBan) {
+        this.soLuongDaBan = soLuongDaBan;
+    }
+    
+    public BigDecimal getTrongLuong() {
+        return trongLuong;
+    }
+    
+    public void setTrongLuong(BigDecimal trongLuong) {
+        this.trongLuong = trongLuong;
+    }
+    
+    public String getKichThuoc() {
+        return kichThuoc;
+    }
+    
+    public void setKichThuoc(String kichThuoc) {
+        this.kichThuoc = kichThuoc;
+    }
+    
+    public String getMauSac() {
+        return mauSac;
+    }
+    
+    public void setMauSac(String mauSac) {
+        this.mauSac = mauSac;
+    }
+    
+    public String getChatLieu() {
+        return chatLieu;
+    }
+    
+    public void setChatLieu(String chatLieu) {
+        this.chatLieu = chatLieu;
+    }
+    
+    public String getXuatXu() {
+        return xuatXu;
+    }
+    
+    public void setXuatXu(String xuatXu) {
+        this.xuatXu = xuatXu;
+    }
+    
+    public String getBarcode() {
+        return barcode;
+    }
+    
+    public void setBarcode(String barcode) {
+        this.barcode = barcode;
+    }
+    
+    public String getQrCode() {
+        return qrCode;
+    }
+    
+    public void setQrCode(String qrCode) {
+        this.qrCode = qrCode;
+    }
+    
+    public String getHinhAnhChinh() {
+        return hinhAnhChinh;
+    }
+    
+    public void setHinhAnhChinh(String hinhAnhChinh) {
+        this.hinhAnhChinh = hinhAnhChinh;
+    }
+    
+    public String getTrangThai() {
+        return trangThai;
+    }
+    
+    public void setTrangThai(String trangThai) {
+        this.trangThai = trangThai;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    
+    public Set<GiaTriThuocTinh> getGiaTriThuocTinhs() {
+        return giaTriThuocTinhs;
+    }
+    
+    public void setGiaTriThuocTinhs(Set<GiaTriThuocTinh> giaTriThuocTinhs) {
+        this.giaTriThuocTinhs = giaTriThuocTinhs;
+    }
+}
+

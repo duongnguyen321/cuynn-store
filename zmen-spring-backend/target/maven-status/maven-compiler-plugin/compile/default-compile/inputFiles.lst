@@ -1,0 +1,11 @@
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/config/DataInitializer.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/config/SecurityConfig.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/dto/ProductResponse.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/controller/ProductController.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/repository/ProductRepository.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/entity/Brand.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/entity/User.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/ZmenBackendApplication.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/entity/Product.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/entity/Category.java
+/home/ubuntu/zmen-spring-backend/src/main/java/com/zmen/backend/repository/UserRepository.java

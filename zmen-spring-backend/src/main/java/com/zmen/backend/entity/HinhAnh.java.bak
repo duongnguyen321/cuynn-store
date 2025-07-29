@@ -1,0 +1,188 @@
+package com.zmen.backend.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "hinh_anh")
+public class HinhAnh {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne
+    @JoinColumn(name = "san_pham_id", referencedColumnName = "id")
+    private Product sanPham;
+    
+    @ManyToOne
+    @JoinColumn(name = "bien_the_san_pham_id", referencedColumnName = "id")
+    private BienTheSanPham bienTheSanPham;
+    
+    @Column(name = "ten_hinh_anh", length = 255)
+    private String tenHinhAnh;
+    
+    @Column(name = "duong_dan", length = 500)
+    private String duongDan;
+    
+    @Column(name = "duong_dan_thu_nho", length = 500)
+    private String duongDanThuNho;
+    
+    @Column(name = "kich_thuoc_file")
+    private Long kichThuocFile;
+    
+    @Column(name = "dinh_dang", length = 10)
+    private String dinhDang; // jpg, png, webp
+    
+    @Column(name = "alt_text", length = 255)
+    private String altText;
+    
+    @Column(name = "la_hinh_chinh")
+    private Boolean laHinhChinh = false;
+    
+    @Column(name = "thu_tu_hien_thi")
+    private Integer thuTuHienThi = 0;
+    
+    @Column(name = "trang_thai")
+    private Boolean trangThai = true;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    // Constructors
+    public HinhAnh() {}
+    
+    public HinhAnh(Product sanPham, String tenHinhAnh, String duongDan) {
+        this.sanPham = sanPham;
+        this.tenHinhAnh = tenHinhAnh;
+        this.duongDan = duongDan;
+    }
+    
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public Product getSanPham() {
+        return sanPham;
+    }
+    
+    public void setSanPham(Product sanPham) {
+        this.sanPham = sanPham;
+    }
+    
+    public BienTheSanPham getBienTheSanPham() {
+        return bienTheSanPham;
+    }
+    
+    public void setBienTheSanPham(BienTheSanPham bienTheSanPham) {
+        this.bienTheSanPham = bienTheSanPham;
+    }
+    
+    public String getTenHinhAnh() {
+        return tenHinhAnh;
+    }
+    
+    public void setTenHinhAnh(String tenHinhAnh) {
+        this.tenHinhAnh = tenHinhAnh;
+    }
+    
+    public String getDuongDan() {
+        return duongDan;
+    }
+    
+    public void setDuongDan(String duongDan) {
+        this.duongDan = duongDan;
+    }
+    
+    public String getDuongDanThuNho() {
+        return duongDanThuNho;
+    }
+    
+    public void setDuongDanThuNho(String duongDanThuNho) {
+        this.duongDanThuNho = duongDanThuNho;
+    }
+    
+    public Long getKichThuocFile() {
+        return kichThuocFile;
+    }
+    
+    public void setKichThuocFile(Long kichThuocFile) {
+        this.kichThuocFile = kichThuocFile;
+    }
+    
+    public String getDinhDang() {
+        return dinhDang;
+    }
+    
+    public void setDinhDang(String dinhDang) {
+        this.dinhDang = dinhDang;
+    }
+    
+    public String getAltText() {
+        return altText;
+    }
+    
+    public void setAltText(String altText) {
+        this.altText = altText;
+    }
+    
+    public Boolean getLaHinhChinh() {
+        return laHinhChinh;
+    }
+    
+    public void setLaHinhChinh(Boolean laHinhChinh) {
+        this.laHinhChinh = laHinhChinh;
+    }
+    
+    public Integer getThuTuHienThi() {
+        return thuTuHienThi;
+    }
+    
+    public void setThuTuHienThi(Integer thuTuHienThi) {
+        this.thuTuHienThi = thuTuHienThi;
+    }
+    
+    public Boolean getTrangThai() {
+        return trangThai;
+    }
+    
+    public void setTrangThai(Boolean trangThai) {
+        this.trangThai = trangThai;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+}
+

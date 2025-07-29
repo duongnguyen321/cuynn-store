@@ -1,0 +1,236 @@
+package com.zmen.backend.entity;
+
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "chi_tiet_hoa_don")
+public class ChiTietHoaDon {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne
+    @JoinColumn(name = "hoa_don_id", referencedColumnName = "id")
+    private HoaDon hoaDon;
+    
+    @ManyToOne
+    @JoinColumn(name = "san_pham_id", referencedColumnName = "id")
+    private Product sanPham;
+    
+    @ManyToOne
+    @JoinColumn(name = "bien_the_san_pham_id", referencedColumnName = "id")
+    private BienTheSanPham bienTheSanPham;
+    
+    @Column(name = "ten_san_pham", length = 255)
+    private String tenSanPham;
+    
+    @Column(name = "hinh_anh_san_pham", length = 255)
+    private String hinhAnhSanPham;
+    
+    @Column(name = "so_luong")
+    private Integer soLuong;
+    
+    @Column(name = "gia_ban", precision = 15, scale = 2)
+    private BigDecimal giaBan;
+    
+    @Column(name = "gia_goc", precision = 15, scale = 2)
+    private BigDecimal giaGoc;
+    
+    @Column(name = "phan_tram_giam_gia")
+    private Integer phanTramGiamGia = 0;
+    
+    @Column(name = "tien_giam_gia", precision = 15, scale = 2)
+    private BigDecimal tienGiamGia = BigDecimal.ZERO;
+    
+    @Column(name = "thanh_tien", precision = 15, scale = 2)
+    private BigDecimal thanhTien;
+    
+    @Column(name = "thuoc_tinh_san_pham", length = 500)
+    private String thuocTinhSanPham; // JSON string of attributes
+    
+    @Column(name = "ghi_chu", length = 255)
+    private String ghiChu;
+    
+    @Column(name = "trang_thai")
+    private String trangThai = "ACTIVE"; // ACTIVE, RETURNED, CANCELLED
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        calculateThanhTien();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+        calculateThanhTien();
+    }
+    
+    private void calculateThanhTien() {
+        if (giaBan != null && soLuong != null) {
+            BigDecimal giaThucTe = giaBan.subtract(tienGiamGia != null ? tienGiamGia : BigDecimal.ZERO);
+            thanhTien = giaThucTe.multiply(BigDecimal.valueOf(soLuong));
+        }
+    }
+    
+    // Constructors
+    public ChiTietHoaDon() {}
+    
+    public ChiTietHoaDon(HoaDon hoaDon, Product sanPham, Integer soLuong, BigDecimal giaBan) {
+        this.hoaDon = hoaDon;
+        this.sanPham = sanPham;
+        this.tenSanPham = sanPham.getName();
+        this.hinhAnhSanPham = sanPham.getImageUrl();
+        this.soLuong = soLuong;
+        this.giaBan = giaBan;
+        this.giaGoc = sanPham.getOriginalPrice() != null ? sanPham.getOriginalPrice() : giaBan;
+    }
+    
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public HoaDon getHoaDon() {
+        return hoaDon;
+    }
+    
+    public void setHoaDon(HoaDon hoaDon) {
+        this.hoaDon = hoaDon;
+    }
+    
+    public Product getSanPham() {
+        return sanPham;
+    }
+    
+    public void setSanPham(Product sanPham) {
+        this.sanPham = sanPham;
+    }
+    
+    public BienTheSanPham getBienTheSanPham() {
+        return bienTheSanPham;
+    }
+    
+    public void setBienTheSanPham(BienTheSanPham bienTheSanPham) {
+        this.bienTheSanPham = bienTheSanPham;
+    }
+    
+    public String getTenSanPham() {
+        return tenSanPham;
+    }
+    
+    public void setTenSanPham(String tenSanPham) {
+        this.tenSanPham = tenSanPham;
+    }
+    
+    public String getHinhAnhSanPham() {
+        return hinhAnhSanPham;
+    }
+    
+    public void setHinhAnhSanPham(String hinhAnhSanPham) {
+        this.hinhAnhSanPham = hinhAnhSanPham;
+    }
+    
+    public Integer getSoLuong() {
+        return soLuong;
+    }
+    
+    public void setSoLuong(Integer soLuong) {
+        this.soLuong = soLuong;
+    }
+    
+    public BigDecimal getGiaBan() {
+        return giaBan;
+    }
+    
+    public void setGiaBan(BigDecimal giaBan) {
+        this.giaBan = giaBan;
+    }
+    
+    public BigDecimal getGiaGoc() {
+        return giaGoc;
+    }
+    
+    public void setGiaGoc(BigDecimal giaGoc) {
+        this.giaGoc = giaGoc;
+    }
+    
+    public Integer getPhanTramGiamGia() {
+        return phanTramGiamGia;
+    }
+    
+    public void setPhanTramGiamGia(Integer phanTramGiamGia) {
+        this.phanTramGiamGia = phanTramGiamGia;
+    }
+    
+    public BigDecimal getTienGiamGia() {
+        return tienGiamGia;
+    }
+    
+    public void setTienGiamGia(BigDecimal tienGiamGia) {
+        this.tienGiamGia = tienGiamGia;
+    }
+    
+    public BigDecimal getThanhTien() {
+        return thanhTien;
+    }
+    
+    public void setThanhTien(BigDecimal thanhTien) {
+        this.thanhTien = thanhTien;
+    }
+    
+    public String getThuocTinhSanPham() {
+        return thuocTinhSanPham;
+    }
+    
+    public void setThuocTinhSanPham(String thuocTinhSanPham) {
+        this.thuocTinhSanPham = thuocTinhSanPham;
+    }
+    
+    public String getGhiChu() {
+        return ghiChu;
+    }
+    
+    public void setGhiChu(String ghiChu) {
+        this.ghiChu = ghiChu;
+    }
+    
+    public String getTrangThai() {
+        return trangThai;
+    }
+    
+    public void setTrangThai(String trangThai) {
+        this.trangThai = trangThai;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+}
+

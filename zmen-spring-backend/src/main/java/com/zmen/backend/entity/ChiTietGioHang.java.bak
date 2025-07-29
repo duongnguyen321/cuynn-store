@@ -1,0 +1,167 @@
+package com.zmen.backend.entity;
+
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "chi_tiet_gio_hang")
+public class ChiTietGioHang {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne
+    @JoinColumn(name = "gio_hang_id", referencedColumnName = "id")
+    private GioHang gioHang;
+    
+    @ManyToOne
+    @JoinColumn(name = "san_pham_id", referencedColumnName = "id")
+    private Product sanPham;
+    
+    @ManyToOne
+    @JoinColumn(name = "bien_the_san_pham_id", referencedColumnName = "id")
+    private BienTheSanPham bienTheSanPham;
+    
+    @Column(name = "so_luong")
+    private Integer soLuong;
+    
+    @Column(name = "gia_ban", precision = 15, scale = 2)
+    private BigDecimal giaBan;
+    
+    @Column(name = "gia_giam", precision = 15, scale = 2)
+    private BigDecimal giaGiam = BigDecimal.ZERO;
+    
+    @Column(name = "thanh_tien", precision = 15, scale = 2)
+    private BigDecimal thanhTien;
+    
+    @Column(name = "ghi_chu", length = 255)
+    private String ghiChu;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        calculateThanhTien();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+        calculateThanhTien();
+    }
+    
+    private void calculateThanhTien() {
+        if (giaBan != null && soLuong != null) {
+            BigDecimal giaThucTe = giaBan.subtract(giaGiam != null ? giaGiam : BigDecimal.ZERO);
+            thanhTien = giaThucTe.multiply(BigDecimal.valueOf(soLuong));
+        }
+    }
+    
+    // Constructors
+    public ChiTietGioHang() {}
+    
+    public ChiTietGioHang(GioHang gioHang, Product sanPham, Integer soLuong, BigDecimal giaBan) {
+        this.gioHang = gioHang;
+        this.sanPham = sanPham;
+        this.soLuong = soLuong;
+        this.giaBan = giaBan;
+    }
+    
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public GioHang getGioHang() {
+        return gioHang;
+    }
+    
+    public void setGioHang(GioHang gioHang) {
+        this.gioHang = gioHang;
+    }
+    
+    public Product getSanPham() {
+        return sanPham;
+    }
+    
+    public void setSanPham(Product sanPham) {
+        this.sanPham = sanPham;
+    }
+    
+    public BienTheSanPham getBienTheSanPham() {
+        return bienTheSanPham;
+    }
+    
+    public void setBienTheSanPham(BienTheSanPham bienTheSanPham) {
+        this.bienTheSanPham = bienTheSanPham;
+    }
+    
+    public Integer getSoLuong() {
+        return soLuong;
+    }
+    
+    public void setSoLuong(Integer soLuong) {
+        this.soLuong = soLuong;
+    }
+    
+    public BigDecimal getGiaBan() {
+        return giaBan;
+    }
+    
+    public void setGiaBan(BigDecimal giaBan) {
+        this.giaBan = giaBan;
+    }
+    
+    public BigDecimal getGiaGiam() {
+        return giaGiam;
+    }
+    
+    public void setGiaGiam(BigDecimal giaGiam) {
+        this.giaGiam = giaGiam;
+    }
+    
+    public BigDecimal getThanhTien() {
+        return thanhTien;
+    }
+    
+    public void setThanhTien(BigDecimal thanhTien) {
+        this.thanhTien = thanhTien;
+    }
+    
+    public String getGhiChu() {
+        return ghiChu;
+    }
+    
+    public void setGhiChu(String ghiChu) {
+        this.ghiChu = ghiChu;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+}
+

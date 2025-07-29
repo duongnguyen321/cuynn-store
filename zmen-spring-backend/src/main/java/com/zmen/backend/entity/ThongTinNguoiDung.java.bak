@@ -1,0 +1,211 @@
+package com.zmen.backend.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "thong_tin_nguoi_dung")
+public class ThongTinNguoiDung {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @OneToOne
+    @JoinColumn(name = "nguoi_dung_id", referencedColumnName = "id")
+    private User nguoiDung;
+    
+    @Column(name = "ho_ten", length = 100)
+    private String hoTen;
+    
+    @Column(name = "gioi_tinh")
+    private String gioiTinh; // Nam, Nữ, Khác
+    
+    @Column(name = "ngay_sinh")
+    private LocalDate ngaySinh;
+    
+    @Column(name = "so_dien_thoai", length = 15)
+    private String soDienThoai;
+    
+    @Column(name = "email", length = 100)
+    private String email;
+    
+    @Column(name = "avatar", length = 255)
+    private String avatar;
+    
+    @Column(name = "nghe_nghiep", length = 100)
+    private String ngheNghiep;
+    
+    @Column(name = "thu_nhap_hang_thang")
+    private Long thuNhapHangThang;
+    
+    @Column(name = "so_cmnd", length = 20)
+    private String soCmnd;
+    
+    @Column(name = "ngay_cap_cmnd")
+    private LocalDate ngayCapCmnd;
+    
+    @Column(name = "noi_cap_cmnd", length = 100)
+    private String noiCapCmnd;
+    
+    @Column(name = "trang_thai")
+    private Boolean trangThai = true;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    // Constructors
+    public ThongTinNguoiDung() {}
+    
+    public ThongTinNguoiDung(User nguoiDung, String hoTen, String email, String soDienThoai) {
+        this.nguoiDung = nguoiDung;
+        this.hoTen = hoTen;
+        this.email = email;
+        this.soDienThoai = soDienThoai;
+    }
+    
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public User getNguoiDung() {
+        return nguoiDung;
+    }
+    
+    public void setNguoiDung(User nguoiDung) {
+        this.nguoiDung = nguoiDung;
+    }
+    
+    public String getHoTen() {
+        return hoTen;
+    }
+    
+    public void setHoTen(String hoTen) {
+        this.hoTen = hoTen;
+    }
+    
+    public String getGioiTinh() {
+        return gioiTinh;
+    }
+    
+    public void setGioiTinh(String gioiTinh) {
+        this.gioiTinh = gioiTinh;
+    }
+    
+    public LocalDate getNgaySinh() {
+        return ngaySinh;
+    }
+    
+    public void setNgaySinh(LocalDate ngaySinh) {
+        this.ngaySinh = ngaySinh;
+    }
+    
+    public String getSoDienThoai() {
+        return soDienThoai;
+    }
+    
+    public void setSoDienThoai(String soDienThoai) {
+        this.soDienThoai = soDienThoai;
+    }
+    
+    public String getEmail() {
+        return email;
+    }
+    
+    public void setEmail(String email) {
+        this.email = email;
+    }
+    
+    public String getAvatar() {
+        return avatar;
+    }
+    
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
+    
+    public String getNgheNghiep() {
+        return ngheNghiep;
+    }
+    
+    public void setNgheNghiep(String ngheNghiep) {
+        this.ngheNghiep = ngheNghiep;
+    }
+    
+    public Long getThuNhapHangThang() {
+        return thuNhapHangThang;
+    }
+    
+    public void setThuNhapHangThang(Long thuNhapHangThang) {
+        this.thuNhapHangThang = thuNhapHangThang;
+    }
+    
+    public String getSoCmnd() {
+        return soCmnd;
+    }
+    
+    public void setSoCmnd(String soCmnd) {
+        this.soCmnd = soCmnd;
+    }
+    
+    public LocalDate getNgayCapCmnd() {
+        return ngayCapCmnd;
+    }
+    
+    public void setNgayCapCmnd(LocalDate ngayCapCmnd) {
+        this.ngayCapCmnd = ngayCapCmnd;
+    }
+    
+    public String getNoiCapCmnd() {
+        return noiCapCmnd;
+    }
+    
+    public void setNoiCapCmnd(String noiCapCmnd) {
+        this.noiCapCmnd = noiCapCmnd;
+    }
+    
+    public Boolean getTrangThai() {
+        return trangThai;
+    }
+    
+    public void setTrangThai(Boolean trangThai) {
+        this.trangThai = trangThai;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+}
+

@@ -1,0 +1,401 @@
+package com.zmen.backend.controller;
+
+import com.zmen.backend.entity.*;
+import com.zmen.backend.repository.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/cart")
+@Tag(name = "Shopping Cart", description = "APIs for shopping cart management")
+@CrossOrigin(origins = "*")
+public class CartController {
+
+    @Autowired
+    private GioHangRepository gioHangRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private BienTheSanPhamRepository bienTheSanPhamRepository;
+
+    @Operation(summary = "Get shopping cart", description = "Get current user's shopping cart or guest cart")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cart retrieved successfully"),
+        @ApiResponse(responseCode = "404", description = "Cart not found")
+    })
+    @GetMapping
+    public ResponseEntity<?> getCart(HttpServletRequest request) {
+        try {
+            GioHang cart = getCurrentCart(request);
+            
+            if (cart == null) {
+                return ResponseEntity.ok(Map.of(
+                    "cart", Map.of(
+                        "id", (Object) null,
+                        "tongSoLuong", 0,
+                        "tongTien", 0,
+                        "items", List.of()
+                    )
+                ));
+            }
+            
+            List<Map<String, Object>> items = cart.getChiTietGioHangs().stream().map(item -> {
+                Map<String, Object> itemMap = new HashMap<>();
+                itemMap.put("id", item.getId());
+                itemMap.put("sanPham", Map.of(
+                    "id", item.getSanPham().getId(),
+                    "name", item.getSanPham().getName(),
+                    "imageUrl", item.getSanPham().getImageUrl(),
+                    "price", item.getSanPham().getPrice(),
+                    "originalPrice", item.getSanPham().getOriginalPrice(),
+                    "discountPercentage", item.getSanPham().getDiscountPercentage()
+                ));
+                itemMap.put("soLuong", item.getSoLuong());
+                itemMap.put("giaBan", item.getGiaBan());
+                itemMap.put("giaGiam", item.getGiaGiam());
+                itemMap.put("thanhTien", item.getThanhTien());
+                itemMap.put("ghiChu", item.getGhiChu());
+                itemMap.put("createdAt", item.getCreatedAt());
+                
+                if (item.getBienTheSanPham() != null) {
+                    itemMap.put("bienThe", Map.of(
+                        "id", item.getBienTheSanPham().getId(),
+                        "tenBienThe", item.getBienTheSanPham().getTenBienThe(),
+                        "mauSac", item.getBienTheSanPham().getMauSac(),
+                        "kichThuoc", item.getBienTheSanPham().getKichThuoc()
+                    ));
+                }
+                
+                return itemMap;
+            }).collect(Collectors.toList());
+            
+            Map<String, Object> cartMap = new HashMap<>();
+            cartMap.put("id", cart.getId());
+            cartMap.put("tongSoLuong", cart.getTongSoLuong());
+            cartMap.put("tongTien", cart.getTongTien());
+            cartMap.put("tongTienGiamGia", cart.getTongTienGiamGia());
+            cartMap.put("maVoucher", cart.getMaVoucher());
+            cartMap.put("giaTriVoucher", cart.getGiaTriVoucher());
+            cartMap.put("trangThai", cart.getTrangThai());
+            cartMap.put("items", items);
+            cartMap.put("createdAt", cart.getCreatedAt());
+            cartMap.put("updatedAt", cart.getUpdatedAt());
+            
+            return ResponseEntity.ok(Map.of("cart", cartMap));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to get cart: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Add item to cart", description = "Add a product to shopping cart")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Item added to cart successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input"),
+        @ApiResponse(responseCode = "404", description = "Product not found")
+    })
+    @PostMapping("/add")
+    public ResponseEntity<?> addToCart(@RequestBody Map<String, Object> cartData, HttpServletRequest request) {
+        try {
+            Long productId = ((Number) cartData.get("productId")).longValue();
+            Integer quantity = ((Number) cartData.get("quantity")).intValue();
+            Long variantId = cartData.containsKey("variantId") ? ((Number) cartData.get("variantId")).longValue() : null;
+            String note = (String) cartData.get("note");
+            
+            if (quantity <= 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Quantity must be greater than 0"));
+            }
+            
+            Optional<Product> productOpt = productRepository.findById(productId);
+            if (!productOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Product not found"));
+            }
+            
+            Product product = productOpt.get();
+            BienTheSanPham variant = null;
+            
+            if (variantId != null) {
+                Optional<BienTheSanPham> variantOpt = bienTheSanPhamRepository.findById(variantId);
+                if (!variantOpt.isPresent()) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Product variant not found"));
+                }
+                variant = variantOpt.get();
+                
+                // Check stock for variant
+                if (variant.getSoLuongTonKho() < quantity) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Not enough stock for this variant"));
+                }
+            } else {
+                // Check stock for main product
+                if (product.getStockQuantity() < quantity) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Not enough stock"));
+                }
+            }
+            
+            GioHang cart = getCurrentCart(request);
+            if (cart == null) {
+                cart = createNewCart(request);
+            }
+            
+            // Check if item already exists in cart
+            Optional<ChiTietGioHang> existingItem = cart.getChiTietGioHangs().stream()
+                .filter(item -> item.getSanPham().getId().equals(productId) && 
+                               (variantId == null ? item.getBienTheSanPham() == null : 
+                                item.getBienTheSanPham() != null && item.getBienTheSanPham().getId().equals(variantId)))
+                .findFirst();
+            
+            if (existingItem.isPresent()) {
+                // Update existing item
+                ChiTietGioHang item = existingItem.get();
+                item.setSoLuong(item.getSoLuong() + quantity);
+                item.setGhiChu(note);
+                // thanhTien will be calculated automatically in @PreUpdate
+            } else {
+                // Create new item
+                ChiTietGioHang newItem = new ChiTietGioHang(cart, product, quantity, 
+                    variant != null ? variant.getGiaBan() : product.getPrice());
+                newItem.setBienTheSanPham(variant);
+                newItem.setGhiChu(note);
+                
+                if (cart.getChiTietGioHangs() == null) {
+                    cart.setChiTietGioHangs(new java.util.HashSet<>());
+                }
+                cart.getChiTietGioHangs().add(newItem);
+            }
+            
+            updateCartTotals(cart);
+            gioHangRepository.save(cart);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Item added to cart successfully",
+                "cartItemCount", cart.getTongSoLuong()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to add item to cart: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Update cart item", description = "Update quantity or note of cart item")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cart item updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input"),
+        @ApiResponse(responseCode = "404", description = "Cart item not found")
+    })
+    @PutMapping("/items/{itemId}")
+    public ResponseEntity<?> updateCartItem(@Parameter(description = "Cart item ID") @PathVariable Long itemId,
+                                          @RequestBody Map<String, Object> updateData,
+                                          HttpServletRequest request) {
+        try {
+            GioHang cart = getCurrentCart(request);
+            if (cart == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Optional<ChiTietGioHang> itemOpt = cart.getChiTietGioHangs().stream()
+                .filter(item -> item.getId().equals(itemId))
+                .findFirst();
+            
+            if (!itemOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            ChiTietGioHang item = itemOpt.get();
+            
+            if (updateData.containsKey("quantity")) {
+                Integer newQuantity = ((Number) updateData.get("quantity")).intValue();
+                if (newQuantity <= 0) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Quantity must be greater than 0"));
+                }
+                
+                // Check stock
+                int availableStock = item.getBienTheSanPham() != null ? 
+                    item.getBienTheSanPham().getSoLuongTonKho() : 
+                    item.getSanPham().getStockQuantity();
+                
+                if (newQuantity > availableStock) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Not enough stock"));
+                }
+                
+                item.setSoLuong(newQuantity);
+            }
+            
+            if (updateData.containsKey("note")) {
+                item.setGhiChu((String) updateData.get("note"));
+            }
+            
+            updateCartTotals(cart);
+            gioHangRepository.save(cart);
+            
+            return ResponseEntity.ok(Map.of("message", "Cart item updated successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to update cart item: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Remove cart item", description = "Remove item from shopping cart")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Item removed successfully"),
+        @ApiResponse(responseCode = "404", description = "Cart item not found")
+    })
+    @DeleteMapping("/items/{itemId}")
+    public ResponseEntity<?> removeCartItem(@Parameter(description = "Cart item ID") @PathVariable Long itemId,
+                                          HttpServletRequest request) {
+        try {
+            GioHang cart = getCurrentCart(request);
+            if (cart == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            boolean removed = cart.getChiTietGioHangs().removeIf(item -> item.getId().equals(itemId));
+            
+            if (!removed) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            updateCartTotals(cart);
+            gioHangRepository.save(cart);
+            
+            return ResponseEntity.ok(Map.of("message", "Item removed from cart successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to remove cart item: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Clear cart", description = "Remove all items from shopping cart")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cart cleared successfully")
+    })
+    @DeleteMapping("/clear")
+    public ResponseEntity<?> clearCart(HttpServletRequest request) {
+        try {
+            GioHang cart = getCurrentCart(request);
+            if (cart != null) {
+                cart.getChiTietGioHangs().clear();
+                updateCartTotals(cart);
+                gioHangRepository.save(cart);
+            }
+            
+            return ResponseEntity.ok(Map.of("message", "Cart cleared successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to clear cart: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Apply voucher", description = "Apply voucher code to cart")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Voucher applied successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid voucher code")
+    })
+    @PostMapping("/apply-voucher")
+    public ResponseEntity<?> applyVoucher(@RequestBody Map<String, String> voucherData, HttpServletRequest request) {
+        try {
+            String voucherCode = voucherData.get("voucherCode");
+            
+            GioHang cart = getCurrentCart(request);
+            if (cart == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Cart not found"));
+            }
+            
+            // TODO: Implement voucher validation logic
+            // For now, just mock the voucher application
+            cart.setMaVoucher(voucherCode);
+            cart.setGiaTriVoucher(new BigDecimal("50000")); // Mock 50k discount
+            
+            updateCartTotals(cart);
+            gioHangRepository.save(cart);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Voucher applied successfully",
+                "discount", cart.getGiaTriVoucher()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to apply voucher: " + e.getMessage()));
+        }
+    }
+
+    // Helper methods
+    private GioHang getCurrentCart(HttpServletRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+            // Authenticated user
+            String username = auth.getName();
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (userOpt.isPresent()) {
+                return gioHangRepository.findByNguoiDungAndTrangThai(userOpt.get(), "ACTIVE").orElse(null);
+            }
+        } else {
+            // Guest user - use session
+            String sessionId = request.getSession().getId();
+            return gioHangRepository.findBySessionIdAndTrangThai(sessionId, "ACTIVE").orElse(null);
+        }
+        
+        return null;
+    }
+    
+    private GioHang createNewCart(HttpServletRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        
+        GioHang cart = new GioHang();
+        
+        if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+            // Authenticated user
+            String username = auth.getName();
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (userOpt.isPresent()) {
+                cart.setNguoiDung(userOpt.get());
+            }
+        } else {
+            // Guest user
+            String sessionId = request.getSession().getId();
+            cart.setSessionId(sessionId);
+        }
+        
+        return gioHangRepository.save(cart);
+    }
+    
+    private void updateCartTotals(GioHang cart) {
+        if (cart.getChiTietGioHangs() == null || cart.getChiTietGioHangs().isEmpty()) {
+            cart.setTongSoLuong(0);
+            cart.setTongTien(BigDecimal.ZERO);
+            cart.setTongTienGiamGia(BigDecimal.ZERO);
+            return;
+        }
+        
+        int totalQuantity = cart.getChiTietGioHangs().stream()
+            .mapToInt(ChiTietGioHang::getSoLuong)
+            .sum();
+        
+        BigDecimal totalAmount = cart.getChiTietGioHangs().stream()
+            .map(ChiTietGioHang::getThanhTien)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        cart.setTongSoLuong(totalQuantity);
+        cart.setTongTien(totalAmount);
+        
+        // Apply voucher discount
+        BigDecimal finalAmount = totalAmount.subtract(cart.getGiaTriVoucher() != null ? cart.getGiaTriVoucher() : BigDecimal.ZERO);
+        cart.setTongTienGiamGia(finalAmount.max(BigDecimal.ZERO));
+    }
+}
+

@@ -1,0 +1,25 @@
+package com.zmen.backend.repository;
+
+import com.zmen.backend.entity.ThongTinNguoiDung;
+import com.zmen.backend.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface ThongTinNguoiDungRepository extends JpaRepository<ThongTinNguoiDung, Long> {
+    
+    Optional<ThongTinNguoiDung> findByNguoiDung(User nguoiDung);
+    
+    Optional<ThongTinNguoiDung> findByNguoiDungId(Long nguoiDungId);
+    
+    Optional<ThongTinNguoiDung> findByEmail(String email);
+    
+    Optional<ThongTinNguoiDung> findBySoDienThoai(String soDienThoai);
+    
+    boolean existsByEmail(String email);
+    
+    boolean existsBySoDienThoai(String soDienThoai);
+}
+
