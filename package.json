@@ -1,0 +1,13 @@
+{
+  "name": "cuynn-store",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"cd backend && mvn spring-boot:run\" \"cd admin && npm run dev\" \"cd store && npm run dev\"",
+    "build": "concurrently \"cd backend && mvn clean package\" \"cd admin && npm run build\" \"cd store && npm run build\"",
+    "preview": "concurrently \"cd backend && mvn spring-boot:run\" \"cd admin && npm run preview\" \"cd store && npm run preview\""
+  },
+  "dependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
