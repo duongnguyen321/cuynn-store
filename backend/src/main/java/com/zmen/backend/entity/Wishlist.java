@@ -1,7 +1,7 @@
 package com.zmen.backend.entity;
 
 import javax.persistence.*;
-import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
 @Table(name = "danh_sach_yeu_thich")
@@ -11,40 +11,38 @@ public class Wishlist {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_nguoi_dung", nullable = false)
-    private User user;
+    @Column(name = "id_nguoi_dung", nullable = false)
+    private Long userId;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_san_pham", nullable = false)
-    private Product product;
+    @Column(name = "id_san_pham", nullable = false)
+    private Long productId;
     
-    @Column(name = "ngay_them", nullable = false)
-    private LocalDateTime addedAt;
-    
-    @PrePersist
-    protected void onCreate() {
-        addedAt = LocalDateTime.now();
-    }
+    @Column(name = "ngay_tao", nullable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
     
     // Constructors
-    public Wishlist() {}
+    public Wishlist() {
+        this.createdAt = new Date();
+    }
     
-    public Wishlist(User user, Product product) {
-        this.user = user;
-        this.product = product;
+    public Wishlist(Long userId, Long productId) {
+        this();
+        this.userId = userId;
+        this.productId = productId;
     }
     
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
     
-    public Product getProduct() { return product; }
-    public void setProduct(Product product) { this.product = product; }
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
     
-    public LocalDateTime getAddedAt() { return addedAt; }
-    public void setAddedAt(LocalDateTime addedAt) { this.addedAt = addedAt; }
+    public Date getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
 }
+

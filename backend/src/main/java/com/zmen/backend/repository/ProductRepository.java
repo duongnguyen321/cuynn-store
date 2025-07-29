@@ -8,33 +8,35 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     
-    Optional<Product> findBySlug(String slug);
+    Optional<Product> findByIdAndDeletedAtIsNull(Long id);
     
-    List<Product> findByFeaturedTrueAndStatus(String status);
+    Page<Product> findByDeletedAtIsNull(Pageable pageable);
     
-    List<Product> findByBestSellerTrueAndStatus(String status);
+    Page<Product> findByStatusAndDeletedAtIsNull(Product.ProductStatus status, Pageable pageable);
     
-    List<Product> findByIsNewTrueAndStatus(String status);
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND " +
+           "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
+           "(:minPrice IS NULL OR p.price >= :minPrice) AND " +
+           "(:maxPrice IS NULL OR p.price <= :maxPrice)")
+    Page<Product> searchProducts(@Param("name") String name,
+                                @Param("minPrice") BigDecimal minPrice,
+                                @Param("maxPrice") BigDecimal maxPrice,
+                                Pageable pageable);
     
-    Page<Product> findByStatus(String status, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.status = 'DANG_BAN' ORDER BY p.createdAt DESC")
+    Page<Product> findNewArrivals(Pageable pageable);
     
-    Page<Product> findByCategory(String category, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.status = 'DANG_BAN' ORDER BY p.id DESC")
+    Page<Product> findBestSellers(Pageable pageable);
     
-    Page<Product> findByBrand(String brand, Pageable pageable);
-    
-    @Query("SELECT p FROM Product p WHERE p.name LIKE %:keyword% OR p.description LIKE %:keyword%")
-    Page<Product> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
-    
-    @Query("SELECT DISTINCT p.category FROM Product p WHERE p.status = 'ACTIVE'")
-    List<String> findAllCategories();
-    
-    @Query("SELECT DISTINCT p.brand FROM Product p WHERE p.status = 'ACTIVE'")
-    List<String> findAllBrands();
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.deletedAt IS NULL")
+    Long countActiveProducts();
 }
 

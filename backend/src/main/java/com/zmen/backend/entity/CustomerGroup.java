@@ -17,8 +17,8 @@ public class CustomerGroup {
     @Column(name = "mo_ta", columnDefinition = "TEXT")
     private String description;
     
-    @ManyToMany(mappedBy = "customerGroups", fetch = FetchType.LAZY)
-    private List<User> users;
+    // @ManyToMany(mappedBy = "customerGroups", fetch = FetchType.LAZY)
+    // private List<User> users;
     
     // Constructors
     public CustomerGroup() {}
@@ -42,6 +42,6 @@ public class CustomerGroup {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     
-    public List<User> getUsers() { return users; }
-    public void setUsers(List<User> users) { this.users = users; }
+    // public List<User> getUsers() { return users; }
+    // public void setUsers(List<User> users) { this.users = users; }
 }

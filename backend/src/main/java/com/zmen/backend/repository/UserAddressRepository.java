@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface UserAddressRepository extends JpaRepository<UserAddress, Long> {
     
-    List<UserAddress> findByUserOrderByIsDefaultDescCreatedAtDesc(User user);
+    List<UserAddress> findByUserOrderByIsDefaultDesc(User user);
     
     Optional<UserAddress> findByUserAndIsDefaultTrue(User user);
     

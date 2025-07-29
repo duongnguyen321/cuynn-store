@@ -24,7 +24,7 @@ public class LoyaltyPointHistory {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_hoa_don")
-    private OrderEntity order;
+    private Order order;
     
     @Column(name = "ghi_chu", columnDefinition = "TEXT")
     private String notes;
@@ -63,8 +63,8 @@ public class LoyaltyPointHistory {
     public TransactionType getTransactionType() { return transactionType; }
     public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }
     
-    public OrderEntity getOrder() { return order; }
-    public void setOrder(OrderEntity order) { this.order = order; }
+    public Order getOrder() { return order; }
+    public void setOrder(Order order) { this.order = order; }
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }

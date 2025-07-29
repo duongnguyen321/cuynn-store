@@ -2,66 +2,59 @@ package com.zmen.backend.entity;
 
 import javax.persistence.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.Set;
+import java.util.Date;
 
 @Entity
-@Table(name = "carts")
+@Table(name = "gio_hang")
 public class Cart {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_nguoi_dung")
     private User user;
     
     @Column(name = "session_id")
-    private String sessionId; // For guest users
+    private String sessionId;
     
-    @Column(name = "total_items")
+    @Column(name = "tong_so_luong")
     private Integer totalItems = 0;
     
-    @Column(name = "total_amount", precision = 12, scale = 2)
+    @Column(name = "tong_tien", precision = 15, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
     
-    @Column(name = "discount_amount", precision = 12, scale = 2)
+    @Column(name = "giam_gia", precision = 15, scale = 2)
     private BigDecimal discountAmount = BigDecimal.ZERO;
     
-    @Column(name = "voucher_code")
+    @Column(name = "ma_voucher")
     private String voucherCode;
     
-    private String status = "ACTIVE"; // ACTIVE, CHECKOUT, ABANDONED
+    @Column(name = "trang_thai")
+    private String status = "ACTIVE";
     
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @Column(name = "ngay_tao", nullable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
     
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-    
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<CartItem> cartItems;
-    
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-    
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+    @Column(name = "ngay_cap_nhat", nullable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date updatedAt;
     
     // Constructors
-    public Cart() {}
+    public Cart() {
+        this.createdAt = new Date();
+        this.updatedAt = new Date();
+    }
     
     public Cart(User user) {
+        this();
         this.user = user;
     }
     
     public Cart(String sessionId) {
+        this();
         this.sessionId = sessionId;
     }
     
@@ -90,13 +83,15 @@ public class Cart {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Date getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
     
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Date getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Date updatedAt) { this.updatedAt = updatedAt; }
     
-    public Set<CartItem> getCartItems() { return cartItems; }
-    public void setCartItems(Set<CartItem> cartItems) { this.cartItems = cartItems; }
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = new Date();
+    }
 }
 

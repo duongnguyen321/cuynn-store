@@ -14,7 +14,7 @@ public class OrderItem {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_hoa_don", nullable = false)
-    private OrderEntity order;
+    private Order order;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_san_pham", nullable = false)
@@ -36,7 +36,7 @@ public class OrderItem {
     // Constructors
     public OrderItem() {}
     
-    public OrderItem(OrderEntity order, Product product, Integer quantity, BigDecimal priceAtTime) {
+    public OrderItem(Order order, Product product, Integer quantity, BigDecimal priceAtTime) {
         this.order = order;
         this.product = product;
         this.quantity = quantity;
@@ -44,7 +44,7 @@ public class OrderItem {
         this.totalPrice = priceAtTime.multiply(new BigDecimal(quantity));
     }
     
-    public OrderItem(OrderEntity order, Product product, ProductVariant productVariant, Integer quantity, BigDecimal priceAtTime) {
+    public OrderItem(Order order, Product product, ProductVariant productVariant, Integer quantity, BigDecimal priceAtTime) {
         this.order = order;
         this.product = product;
         this.productVariant = productVariant;
@@ -57,8 +57,8 @@ public class OrderItem {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
-    public OrderEntity getOrder() { return order; }
-    public void setOrder(OrderEntity order) { this.order = order; }
+    public Order getOrder() { return order; }
+    public void setOrder(Order order) { this.order = order; }
     
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }

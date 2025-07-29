@@ -14,6 +14,12 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     
     Optional<Cart> findBySessionIdAndStatus(String sessionId, String status);
     
-    Optional<Cart> findByUserIdAndStatus(Long userId, String status);
+    Optional<Cart> findByUser(User user);
+    
+    Optional<Cart> findBySessionId(String sessionId);
+    
+    void deleteByUser(User user);
+    
+    void deleteBySessionId(String sessionId);
 }
 

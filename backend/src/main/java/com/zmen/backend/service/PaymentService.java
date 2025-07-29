@@ -20,8 +20,8 @@ public class PaymentService {
     @Autowired
     private PaymentTransactionRepository paymentTransactionRepository;
     
-    @Autowired
-    private RefundRepository refundRepository;
+    // @Autowired
+    // private RefundRepository refundRepository;
     
     @Autowired
     private OrderRepository orderRepository;

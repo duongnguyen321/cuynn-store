@@ -1,8 +1,7 @@
 package com.zmen.backend.entity;
 
 import javax.persistence.*;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
 @Table(name = "thong_tin_nguoi_dung")
@@ -12,100 +11,82 @@ public class UserProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "id_nguoi_dung", unique = true, nullable = false)
+    @Column(name = "id_nguoi_dung", unique = true, nullable = false)
+    private Long userId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_nguoi_dung", insertable = false, updatable = false)
     private User user;
     
-    @Column(name = "ho_ten", nullable = false)
+    @Column(name = "ho_ten_day_du")
     private String fullName;
+    
+    @Column(name = "so_dien_thoai")
+    private String phoneNumber;
     
     @Column(name = "avatar")
     private String avatar;
     
-    @Column(name = "so_dien_thoai", unique = true)
-    private String phoneNumber;
-    
-    @Enumerated(EnumType.STRING)
     @Column(name = "gioi_tinh")
-    private Gender gender;
+    private String gender;
     
     @Column(name = "ngay_sinh")
-    private LocalDate dateOfBirth;
+    @Temporal(TemporalType.DATE)
+    private Date dateOfBirth;
     
-    @Column(name = "diem_tich_luy", nullable = false)
+    @Column(name = "diem_tich_luy")
     private Integer loyaltyPoints = 0;
     
-    @ManyToOne
-    @JoinColumn(name = "id_hang_thanh_vien")
-    private MembershipTier membershipTier;
+    @Column(name = "id_hang_thanh_vien")
+    private Long membershipLevelId;
     
-    @ManyToOne
-    @JoinColumn(name = "id_cong_ty")
-    private Company company;
-    
-    @Column(name = "ngay_tao", nullable = false)
-    private LocalDateTime createdAt;
-    
-    @Column(name = "ngay_cap_nhat", nullable = false)
-    private LocalDateTime updatedAt;
-    
-    public enum Gender {
-        nam, nu, khac
-    }
-    
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-    
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+    @Column(name = "id_cong_ty")
+    private Long companyId;
     
     // Constructors
     public UserProfile() {}
     
-    public UserProfile(User user, String fullName) {
-        this.user = user;
-        this.fullName = fullName;
+    public UserProfile(Long userId) {
+        this.userId = userId;
     }
     
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+    
     public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public void setUser(User user) { 
+        this.user = user; 
+        if (user != null) {
+            this.userId = user.getId();
+        }
+    }
     
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     
-    public String getAvatar() { return avatar; }
-    public void setAvatar(String avatar) { this.avatar = avatar; }
-    
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     
-    public Gender getGender() { return gender; }
-    public void setGender(Gender gender) { this.gender = gender; }
+    public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
     
-    public LocalDate getDateOfBirth() { return dateOfBirth; }
-    public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
+    
+    public Date getDateOfBirth() { return dateOfBirth; }
+    public void setDateOfBirth(Date dateOfBirth) { this.dateOfBirth = dateOfBirth; }
     
     public Integer getLoyaltyPoints() { return loyaltyPoints; }
     public void setLoyaltyPoints(Integer loyaltyPoints) { this.loyaltyPoints = loyaltyPoints; }
     
-    public MembershipTier getMembershipTier() { return membershipTier; }
-    public void setMembershipTier(MembershipTier membershipTier) { this.membershipTier = membershipTier; }
+    public Long getMembershipLevelId() { return membershipLevelId; }
+    public void setMembershipLevelId(Long membershipLevelId) { this.membershipLevelId = membershipLevelId; }
     
-    public Company getCompany() { return company; }
-    public void setCompany(Company company) { this.company = company; }
-    
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Long getCompanyId() { return companyId; }
+    public void setCompanyId(Long companyId) { this.companyId = companyId; }
 }
+

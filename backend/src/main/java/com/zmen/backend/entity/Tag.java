@@ -21,8 +21,8 @@ public class Tag {
     @Column(name = "ngay_xoa")
     private LocalDateTime deletedAt;
     
-    @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
-    private List<Product> products;
+    // @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
+    // private List<Product> products;
     
     // Constructors
     public Tag() {}
@@ -49,8 +49,8 @@ public class Tag {
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     
-    public List<Product> getProducts() { return products; }
-    public void setProducts(List<Product> products) { this.products = products; }
+    // public List<Product> getProducts() { return products; }
+    // public void setProducts(List<Product> products) { this.products = products; }
     
     // Utility methods
     public boolean isDeleted() {

@@ -22,7 +22,7 @@ public class ProductReview {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_hoa_don")
-    private OrderEntity order;
+    private Order order;
     
     @Column(name = "diem_danh_gia", nullable = false)
     private Integer rating;
@@ -102,8 +102,8 @@ public class ProductReview {
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
     
-    public OrderEntity getOrder() { return order; }
-    public void setOrder(OrderEntity order) { this.order = order; }
+    public Order getOrder() { return order; }
+    public void setOrder(Order order) { this.order = order; }
     
     public Integer getRating() { return rating; }
     public void setRating(Integer rating) { this.rating = rating; }

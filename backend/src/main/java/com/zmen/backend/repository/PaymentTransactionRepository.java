@@ -13,13 +13,13 @@ import java.util.Optional;
 @Repository
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction, Long> {
     
-    List<PaymentTransaction> findByOrderIdOrderByCreatedAtDesc(Long orderId);
+    List<PaymentTransaction> findByOrder_IdOrderByCreatedAtDesc(Long orderId);
     
-    List<PaymentTransaction> findByUserIdOrderByCreatedAtDesc(Long userId);
+    List<PaymentTransaction> findByOrder_UserIdOrderByCreatedAtDesc(Long userId);
     
     List<PaymentTransaction> findByStatusOrderByCreatedAtDesc(String status);
     
-    Optional<PaymentTransaction> findByTransactionIdAndUserId(String transactionId, Long userId);
+    Optional<PaymentTransaction> findByTransactionCodeAndOrder_UserId(String transactionCode, Long userId);
     
     @Query("SELECT pt FROM PaymentTransaction pt WHERE pt.createdAt BETWEEN :startDate AND :endDate")
     List<PaymentTransaction> findByDateRange(@Param("startDate") LocalDateTime startDate, 

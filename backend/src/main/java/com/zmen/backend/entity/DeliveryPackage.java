@@ -16,7 +16,7 @@ public class DeliveryPackage {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_hoa_don", nullable = false)
-    private OrderEntity order;
+    private Order order;
     
     @Column(name = "ma_goi_hang", unique = true, nullable = false)
     private String packageCode;
@@ -53,7 +53,7 @@ public class DeliveryPackage {
     // Constructors
     public DeliveryPackage() {}
     
-    public DeliveryPackage(OrderEntity order, String packageCode) {
+    public DeliveryPackage(Order order, String packageCode) {
         this.order = order;
         this.packageCode = packageCode;
     }
@@ -62,8 +62,8 @@ public class DeliveryPackage {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
-    public OrderEntity getOrder() { return order; }
-    public void setOrder(OrderEntity order) { this.order = order; }
+    public Order getOrder() { return order; }
+    public void setOrder(Order order) { this.order = order; }
     
     public String getPackageCode() { return packageCode; }
     public void setPackageCode(String packageCode) { this.packageCode = packageCode; }

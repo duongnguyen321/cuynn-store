@@ -18,7 +18,7 @@ public class ReturnOrder {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_hoa_don_goc", nullable = false)
-    private OrderEntity originalOrder;
+    private Order originalOrder;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_nhan_vien_xu_ly", nullable = false)
@@ -52,7 +52,7 @@ public class ReturnOrder {
     // Constructors
     public ReturnOrder() {}
     
-    public ReturnOrder(String returnCode, OrderEntity originalOrder, Employee handledByEmployee, String returnReason) {
+    public ReturnOrder(String returnCode, Order originalOrder, Employee handledByEmployee, String returnReason) {
         this.returnCode = returnCode;
         this.originalOrder = originalOrder;
         this.handledByEmployee = handledByEmployee;
@@ -68,8 +68,8 @@ public class ReturnOrder {
     public String getReturnCode() { return returnCode; }
     public void setReturnCode(String returnCode) { this.returnCode = returnCode; }
     
-    public OrderEntity getOriginalOrder() { return originalOrder; }
-    public void setOriginalOrder(OrderEntity originalOrder) { this.originalOrder = originalOrder; }
+    public Order getOriginalOrder() { return originalOrder; }
+    public void setOriginalOrder(Order originalOrder) { this.originalOrder = originalOrder; }
     
     public Employee getHandledByEmployee() { return handledByEmployee; }
     public void setHandledByEmployee(Employee handledByEmployee) { this.handledByEmployee = handledByEmployee; }

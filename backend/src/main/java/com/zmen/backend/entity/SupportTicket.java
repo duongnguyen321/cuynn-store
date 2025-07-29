@@ -21,7 +21,7 @@ public class SupportTicket {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_hoa_don")
-    private OrderEntity relatedOrder;
+    private Order relatedOrder;
     
     @Column(name = "tieu_de", nullable = false)
     private String title;
@@ -83,8 +83,8 @@ public class SupportTicket {
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
     
-    public OrderEntity getRelatedOrder() { return relatedOrder; }
-    public void setRelatedOrder(OrderEntity relatedOrder) { this.relatedOrder = relatedOrder; }
+    public Order getRelatedOrder() { return relatedOrder; }
+    public void setRelatedOrder(Order relatedOrder) { this.relatedOrder = relatedOrder; }
     
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
